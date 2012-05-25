@@ -986,6 +986,9 @@ case "${target}" in
   romp-*-*)
     noconfigdirs="$noconfigdirs bfd binutils ld gas opcodes target-libgloss ${libgcj}"
     ;;
+  mist32-*-elf*)
+    noconfigdirs="$noconfigdirs gdb"
+    ;;
   sh-*-* | sh64-*-*)
     case "${host}" in
       i[[3456789]]86-*-vsta) ;; # don't add gprof back in

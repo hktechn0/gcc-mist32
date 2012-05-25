@@ -1736,23 +1736,23 @@ else
     ;;
 
   *)
-    AC_CHECK_FUNC([shl_load],
-	  [lt_cv_dlopen="shl_load"],
-      [AC_CHECK_LIB([dld], [shl_load],
-	    [lt_cv_dlopen="shl_load" lt_cv_dlopen_libs="-ldld"],
-	[AC_CHECK_FUNC([dlopen],
-	      [lt_cv_dlopen="dlopen"],
-	  [AC_CHECK_LIB([dl], [dlopen],
-		[lt_cv_dlopen="dlopen" lt_cv_dlopen_libs="-ldl"],
-	    [AC_CHECK_LIB([svld], [dlopen],
-		  [lt_cv_dlopen="dlopen" lt_cv_dlopen_libs="-lsvld"],
-	      [AC_CHECK_LIB([dld], [dld_link],
-		    [lt_cv_dlopen="dld_link" lt_cv_dlopen_libs="-ldld"])
-	      ])
-	    ])
-	  ])
-	])
-      ])
+#    AC_CHECK_FUNC([shl_load],
+#	  [lt_cv_dlopen="shl_load"],
+#      [AC_CHECK_LIB([dld], [shl_load],
+#	    [lt_cv_dlopen="shl_load" lt_cv_dlopen_libs="-ldld"],
+#	[AC_CHECK_FUNC([dlopen],
+#	      [lt_cv_dlopen="dlopen"],
+#	  [AC_CHECK_LIB([dl], [dlopen],
+#		[lt_cv_dlopen="dlopen" lt_cv_dlopen_libs="-ldl"],
+#	    [AC_CHECK_LIB([svld], [dlopen],
+#		  [lt_cv_dlopen="dlopen" lt_cv_dlopen_libs="-lsvld"],
+#	      [AC_CHECK_LIB([dld], [dld_link],
+#		    [lt_cv_dlopen="dld_link" lt_cv_dlopen_libs="-ldld"])
+#	      ])
+#	    ])
+#	  ])
+#	])
+#      ])
     ;;
   esac
 
@@ -5362,7 +5362,10 @@ if test -n "$compiler"; then
   _LT_LINKER_SHLIBS($1)
   _LT_SYS_DYNAMIC_LINKER($1)
   _LT_LINKER_HARDCODE_LIBPATH($1)
-  LT_SYS_DLOPEN_SELF
+#  LT_SYS_DLOPEN_SELF
+  if test "$cross_compiling" = no; then
+    LT_SYS_DLOPEN_SELF
+  fi
   _LT_CMD_STRIPLIB
 
   # Report which library types will actually be built

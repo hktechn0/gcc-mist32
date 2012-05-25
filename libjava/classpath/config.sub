@@ -4,7 +4,7 @@
 #   2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008
 #   Free Software Foundation, Inc.
 
-timestamp='2008-12-11'
+timestamp='2012-05-26'
 
 # This file is (in principle) common to ALL GNU software.
 # The presence of a machine in this file suggests that SOME GNU software
@@ -270,6 +270,7 @@ case $basic_machine in
 	| mipsisa64sb1 | mipsisa64sb1el \
 	| mipsisa64sr71k | mipsisa64sr71kel \
 	| mipstx39 | mipstx39el \
+	| mist32 \
 	| mn10200 | mn10300 \
 	| mt \
 	| msp430 \
@@ -354,6 +355,7 @@ case $basic_machine in
 	| mipsisa64sb1-* | mipsisa64sb1el-* \
 	| mipsisa64sr71k-* | mipsisa64sr71kel-* \
 	| mipstx39-* | mipstx39el-* \
+	| mist32-* \
 	| mmix-* \
 	| mt-* \
 	| msp430-* \
