@@ -38,6 +38,7 @@
 ;; Registers
 (define_constants
   [(RETURN_POINTER_REGNUM	31)
+   (CONDITION_CODE_REGNUM	32)
    (STACK_POINTER_REGNUM	33)]
 )
 
@@ -151,14 +152,14 @@
   [(set (match_operand:QI 0         "register_operand" "=r")
 	(mem:QI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "ld8 %0,%1"
+  "ld8 %0, %1"
 )
 
 (define_insn "*storeqi_mem"
   [(set (mem:QI (match_operand:SI 0 "register_operand" "r"))
 	(match_operand:QI 1         "register_operand" "r"))]
   ""
-  "st8 %1,%0"
+  "st8 %1, %0"
 )
 
 (define_insn "*movqi_insn"
@@ -166,10 +167,10 @@
 	(match_operand:QI 1 "general_operand"       "r,J,mT,r"))]
   "register_operand (operands[0], QImode) || register_operand (operands[1], QImode)"
   "@
-   move %0,%1
-   lil  %0,%1
-   ld8  %0,%1
-   st8  %1,%0"
+   move %0, %1
+   lil  %0, %1
+   ld8  %0, %1
+   st8  %1, %0"
 )
 
 ;;}}}
@@ -192,14 +193,14 @@
   [(set (match_operand:HI 0         "register_operand" "=r")
 	(mem:HI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "ld16 %0,%1"
+  "ld16 %0, %1"
 )
 
 (define_insn "*storehi_mem"
   [(set (mem:HI (match_operand:SI 0 "register_operand" "r"))
 	(match_operand:HI 1         "register_operand" "r"))]
   ""
-  "st16 %1,%0"
+  "st16 %1, %0"
 )
 
 (define_insn "*movhi_insn"
@@ -207,11 +208,11 @@
 	(match_operand:HI 1 "general_operand"       "r,J,K,mT,r"))]
   "register_operand (operands[0], HImode) || register_operand (operands[1], HImode)"
   "@
-   move  %0,%1
-   lil   %0,%1
-   ulil  %0,%1
-   ld16  %0,%1
-   st16  %1,%0"
+   move  %0, %1
+   lil   %0, %1
+   ulil  %0, %1
+   ld16  %0, %1
+   st16  %1, %0"
 )
 
 ;;}}}
@@ -286,7 +287,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(high:SI (match_operand 1 "lih_wl16_operand" "")))]
   ""
-  "lih %0,hi(%1)"
+  "lih %0, hi(%1)"
 )
 
 (define_insn "lo_sum_si"
@@ -294,21 +295,21 @@
 	(lo_sum:SI (match_operand:SI 1 "register_operand" "0")
 		   (match_operand:SI 2 "lih_wl16_operand" "")))]
   ""
-  "wl16 %0,lo(%2)"
+  "wl16 %0, lo(%2)"
 )
 
 (define_insn "*loadsi_mem"
   [(set (match_operand:SI         0 "register_operand" "=r")
 	(mem:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "ld32 %0,%1"
+  "ld32 %0, %1"
 )
 
 (define_insn "*storesi_mem"
   [(set (mem:SI (match_operand:SI 0 "register_operand" "r"))
 	(match_operand:SI         1 "register_operand" "r"))]
   ""
-  "st32 %1,%0"
+  "st32 %1, %0"
 )
 
 (define_insn "*movsi_insn"
@@ -316,12 +317,12 @@
 	(match_operand:SI 1 "general_operand"       "r,J,K,L,mT,r"))]
   "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
   "@
-   move %0,%1
-   lil  %0,lo(%1)
-   ulil %0,lo(%1)
-   lih  %0,hi(%1)
-   ld32 %0,%1
-   st32 %1,%0"
+   move %0, %1
+   lil  %0, lo(%1)
+   ulil %0, lo(%1)
+   lih  %0, hi(%1)
+   ld32 %0, %1
+   st32 %1, %0"
 )
 
 ;;}}}
@@ -342,15 +343,15 @@
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,mT")))]
   ""
   "@
-   wh16 %0,0x0000
-   ld8  %0,%1"
+   wh16 %0, 0x0000
+   ld8  %0, %1"
 )
 
 (define_insn "zero_extendhisi2"
   [(set (match_operand:SI 0 "register_operand"                "=r")
 	(zero_extend:SI (match_operand:HI 1 "register_operand" "0")))]
   ""
-  "wh16 %0,0x0000"
+  "wh16 %0, 0x0000"
 )
 
 ;; Signed conversions from a smaller integer to a larger integer
@@ -360,9 +361,9 @@
 	(sign_extend:SI (match_operand:QI 1 "nonimmediate_operand" "r,mT,r")))]
   ""
   "@
-   sext8 %0,%1
-   ld8   %0,%1
-   st8   %1,%0"
+   sext8 %0, %1
+   ld8   %0, %1
+   st8   %1, %0"
 )
 
 (define_insn "extendhisi2"
@@ -370,9 +371,9 @@
 	(sign_extend:SI (match_operand:HI 1 "nonimmediate_operand" "r,mT,r")))]
   ""
   "@
-   sext16 %0,%1
-   ld16   %0,%1
-   st16   %1,%0"
+   sext16 %0, %1
+   ld16   %0, %1
+   st16   %1, %0"
 )
 
 ;;}}} 
@@ -385,22 +386,22 @@
 		 (match_operand:SI 2 "nonmemory_operand" "r,I")))]
   ""
   "@
-   add %0,%2
-   add %0,%2"
+   add %0, %2
+   add %0, %2"
 )
 
 (define_insn "increment"
   [(set (match_operand:SI 0 "register_operand"            "=r")
 	(pre_inc:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "inc %0,%1"
+  "inc %0, %1"
 )
 
 (define_insn "decrement"
   [(set (match_operand:SI 0 "register_operand"            "=r")
 	(pre_dec:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "dec %0,%1"
+  "dec %0, %1"
 )
 
 ;;}}}
@@ -412,8 +413,8 @@
 		  (match_operand:SI 2 "nonmemory_operand" "r,I")))]
   ""
   "@
-   sub %0,%2
-   sub %0,%2"
+   sub %0, %2
+   sub %0, %2"
 )
 
 ;;}}}
@@ -426,8 +427,8 @@
 		 (sign_extend:SI (match_operand:HI 2 "register_operand"  "r,I"))))]
   ""
   "@
-   mull %0,%2
-   mull %0,%2"
+   mull %0, %2
+   mull %0, %2"
 )
 
 ;; Signed multiplication producing 32-bit result from 32-bit inputs
@@ -437,8 +438,8 @@
 		 (match_operand:SI 2 "register_operand"  "r,I")))]
   ""
   "@
-   mull %0,%2
-   mull %0,%2"
+   mull %0, %2
+   mull %0, %2"
 )
 
 ;;}}}
@@ -451,8 +452,8 @@
 		(match_operand:SI 2 "register_operand" "r,I")))]
   ""
   "@
-   div %0,%2
-   div %0,%2"
+   div %0, %2
+   div %0, %2"
 )
 
 ;; Unigned division
@@ -462,8 +463,8 @@
 		 (match_operand:SI 2 "register_operand" "r,I")))]
   ""
   "@
-   udiv %0,%2
-   udiv %0,%2"
+   udiv %0, %2
+   udiv %0, %2"
 )
 
 ;; Signed modulo operation
@@ -473,8 +474,8 @@
 		(match_operand:SI 2 "register_operand" "r,I")))]
   ""
   "@
-   mod %0,%2
-   mod %0,%2"
+   mod %0, %2
+   mod %0, %2"
 )
 
 ;; Unsigned modulo operation
@@ -484,8 +485,8 @@
 		 (match_operand:SI 2 "register_operand" "r,I")))]
   ""
   "@
-   umod %0,%2
-   umod %0,%2"
+   umod %0, %2
+   umod %0, %2"
 )
 
 ;;}}}
@@ -499,8 +500,8 @@
 		   (match_operand:SI 2 "nonmemory_operand" "r,I")))]
   ""
   "@
-   shl %0,%2
-   shl %0,%2"
+   shl %0, %2
+   shl %0, %2"
 )
 
 ;; Arithmetic Shift Right
@@ -510,8 +511,8 @@
 		     (match_operand:SI 2 "nonmemory_operand" "r,I")))]
   ""
   "@
-   sar %0,%2
-   sar %0,%2"
+   sar %0, %2
+   sar %0, %2"
 )
 
 ;; Logical Shift Right
@@ -521,8 +522,8 @@
 		     (match_operand:SI 2 "nonmemory_operand" "r,I")))]
   ""
   "@
-   shr %0,%2
-   shr %0,%2"
+   shr %0, %2
+   shr %0, %2"
 )
 
 ;;}}} 
@@ -534,7 +535,7 @@
 	(and:SI (match_operand:SI 1 "register_operand" "%0")
 		(match_operand:SI 2 "nonmemory_operand" "r")))]
   ""
-  "and %0,%1"
+  "and %0, %2"
 )
 
 ;; Inclusive OR, 32-bit integers
@@ -543,7 +544,7 @@
 	(ior:SI (match_operand:SI 1 "register_operand" "%0")
 		(match_operand:SI 2 "nonmemory_operand" "r")))]
   ""
-  "or %1, %0"
+  "or %0, %2"
 )
 
 ;; Exclusive OR, 32-bit integers
@@ -552,7 +553,7 @@
 	(xor:SI (match_operand:SI 1 "register_operand" "%0")
 		(match_operand:SI 2 "nonmemory_operand" "r")))]
   ""
-  "xor %1, %0"
+  "xor %0, %2"
 )
 
 ;; Negative (Zero's comlement), 32-bit integers
@@ -582,8 +583,8 @@
 		    (match_operand:SI 1 "nonmemory_operand" "r,I")))]
   ""
   "@
-   cmp %1, %0
-   cmp %1, %0"
+   cmp %0, %1
+   cmp %0, %1"
 )
 
 ;;}}} 
@@ -593,13 +594,14 @@
 ;; to allocate a new comparison register
 
 (define_expand "cbranchsi4"
-  [(set (pc)
+  [(set (reg:CC CONDITION_CODE_REGNUM)
+	(compare:CC (match_operand:SI 1 "register_operand"  "")
+		    (match_operand:SI 2 "nonmemory_operand" "")))
+   (set (pc)
 	(if_then_else (match_operator 0 "ordered_comparison_operator"
-				      [(match_operand:SI 1 "register_operand"  "")
-				       (match_operand:SI 2 "nonmemory_operand" "")])
+				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
 		      (label_ref (match_operand 3 "" ""))
-		      (pc)))
-   (clobber (reg:CC 32))]
+		      (pc)))]
   ""
   "operands[1] = force_reg (Pmode, operands[1]);
    operands[2] = force_reg (Pmode, operands[2]);"
@@ -608,14 +610,33 @@
 (define_insn "*branch_true"
   [(set (pc)
 	(if_then_else (match_operator 0 "comparison_operator"
-				      [(match_operand:SI 1 "register_operand"  "r")
-				       (match_operand:SI 2 "nonmemory_operand" "r")])
-		      (label_ref (match_operand 3 "" ""))
+				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
+		      (label_ref (match_operand 1 "" ""))
 		      (pc)))]
   ""
-  "cmp %1, %2\n\tbr %3, #%b0"
-  [(set (attr "length") (const_int 8))]
+  "br %1, #%b0"
 )
+
+(define_insn "*branch_false"
+  [(set (pc)
+	(if_then_else (match_operator 0 "comparison_operator"
+				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
+		      (pc)
+		      (label_ref (match_operand 1 "" ""))))]
+  ""
+  "br %1, #%B0"
+)
+
+
+
+
+
+
+
+
+
+
+
 
 
   ; evalution length attr first, check if label distance from PC.
@@ -647,10 +668,9 @@
 ;; registers used as operands.
 
 (define_expand "call"
-  [(set (reg:SI RETURN_POINTER_REGNUM) 
-	(plus:SI (pc) (const_int 8)))
-   (call (match_operand:SI 0 "call_operand" "")
-	 (match_operand 1 "" ""))]
+  [(parallel [(call (match_operand:SI 0 "call_operand" "")
+		    (match_operand 1 "" ""))
+	      (clobber (reg:SI RETURN_POINTER_REGNUM))])]
   ""
   "
 {
@@ -659,25 +679,27 @@
 }
 ")
 
+(define_insn "*call_reg"
+  [(call (mem:SI (match_operand:SI 0 "register_operand" "r"))
+	 (match_operand 1 "" ""))
+   (clobber (reg:SI RETURN_POINTER_REGNUM))]
+  ""
+  "movepc rret, 8\n\tb %0, #al \t; call_reg"
+)
+
 (define_insn "*call_label"
   [(call (mem:SI (match_operand:SI 0 "call_address_operand" ""))
-	 (match_operand 1 "" ""))]
+	 (match_operand 1 "" ""))
+   (clobber (reg:SI RETURN_POINTER_REGNUM))]
   ""
   "*
 {
   if (lih_wl16_operand (operands[0], FUNCTION_MODE))
-    return \"lih rtmp,hi(%0)\n\twl16 rtmp,lo(%0)\n\tb %0,#al\";
+    return \"lih rtmp,hi(%0)\n\twl16 rtmp,lo(%0)\n\tmovepc rret, 8\n\tb rtmp,#al\";
   else
-    return \"b %0,#al\";
+    return \"movepc rret, 8\n\tb %0, #al\";
 }
 ")
-
-(define_insn "*call_reg"
-  [(call (mem:SI (match_operand:SI 0 "register_operand" "r"))
-	 (match_operand 1 "" ""))]
-  ""
-  "b %0, #al \t; call_reg"
-)
 
 ;; Subroutine call instruction returning a value.  Operand 0 is the hard
 ;; register in which the value is returned.  There are three more operands, the
@@ -687,11 +709,10 @@
 ;; Subroutines that return `BLKmode' objects use the `call' insn.
 
 (define_expand "call_value"
-  [(set (reg:SI RETURN_POINTER_REGNUM)
-	(plus:SI (pc) (const_int 8)))
-   (set (match_operand 0 "register_operand"  "=r")
-	(call (match_operand:SI 1 "call_operand" "")
-	      (match_operand 2 "" "")))]
+  [(parallel [(set (match_operand 0 "register_operand"  "=r")
+		   (call (match_operand:SI 1 "call_operand" "")
+			 (match_operand 2 "" "")))
+	      (clobber (reg:SI RETURN_POINTER_REGNUM))])]
   ""
   "
 {
@@ -703,22 +724,24 @@
 (define_insn "*call_value_internal_reg"
   [(set (match_operand 0 "register_operand"  "=r")
 	(call (mem:SI (match_operand:SI 1 "register_operand" "r"))
-	      (match_operand 2 "" "")))]
+	      (match_operand 2 "" "")))
+   (clobber (reg:SI RETURN_POINTER_REGNUM))]
   ""
-  "b %1, #al \t; call"
+  "movepc rret, 8\n\tb %1, #al \t; call"
 )
 
 (define_insn "*call_value_internal_label"
   [(set (match_operand 0 "register_operand"  "=r")
 	(call (mem:SI (match_operand:SI 1 "call_address_operand" ""))
-	      (match_operand 2 "" "")))]
+	      (match_operand 2 "" "")))
+   (clobber (reg:SI RETURN_POINTER_REGNUM))]
   ""
   "*
 {
   if (lih_wl16_operand (operands[1], FUNCTION_MODE))
-    return \"lih rtmp,hi(%1)\n\twl16 rtmp,lo(%1)\n\tb %1,#al\";
+    return \"lih rtmp,hi(%1)\n\twl16 rtmp,lo(%1)\n\tmovepc rret, 8\n\tb rtmp,#al\";
   else
-    return \"b %1,#al\";
+    return \"movepc rret, 8\n\tb %1, #al\";
 }
 ")
 
