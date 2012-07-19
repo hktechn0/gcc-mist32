@@ -460,7 +460,7 @@
 (define_insn "udivsi3"
   [(set (match_operand:SI 0 "register_operand"         "=r,r")
 	(udiv:SI (match_operand:SI 1 "register_operand" "0,0")
-		 (match_operand:SI 2 "register_operand" "r,I")))]
+		 (match_operand:SI 2 "register_operand" "r,M")))]
   ""
   "@
    udiv %0, %2
@@ -482,7 +482,7 @@
 (define_insn "umodsi3"
   [(set (match_operand:SI 0 "register_operand"         "=r,r")
 	(umod:SI (match_operand:SI 1 "register_operand" "0,0")
-		 (match_operand:SI 2 "register_operand" "r,I")))]
+		 (match_operand:SI 2 "register_operand" "r,M")))]
   ""
   "@
    umod %0, %2
@@ -497,7 +497,7 @@
 (define_insn "ashlsi3"
   [(set (match_operand:SI 0 "register_operand"            "=r,r")
 	(ashift:SI (match_operand:SI 1 "register_operand"  "0,0")
-		   (match_operand:SI 2 "nonmemory_operand" "r,I")))]
+		   (match_operand:SI 2 "nonmemory_operand" "r,M")))]
   ""
   "@
    shl %0, %2
@@ -508,7 +508,7 @@
 (define_insn "ashrsi3"
   [(set (match_operand:SI 0 "register_operand"              "=r,r")
 	(ashiftrt:SI (match_operand:SI 1 "register_operand"  "0,0")
-		     (match_operand:SI 2 "nonmemory_operand" "r,I")))]
+		     (match_operand:SI 2 "nonmemory_operand" "r,M")))]
   ""
   "@
    sar %0, %2
@@ -519,7 +519,7 @@
 (define_insn "lshrsi3"
   [(set (match_operand:SI 0 "register_operand"              "=r,r")
 	(lshiftrt:SI (match_operand:SI 1 "register_operand"  "0,0")
-		     (match_operand:SI 2 "nonmemory_operand" "r,I")))]
+		     (match_operand:SI 2 "nonmemory_operand" "r,M")))]
   ""
   "@
    shr %0, %2
@@ -626,18 +626,6 @@
   ""
   "br %1, #%B0"
 )
-
-
-
-
-
-
-
-
-
-
-
-
 
   ; evalution length attr first, check if label distance from PC.
   ; after, generate branch insn using length_attr.
@@ -842,4 +830,5 @@
   [(unspec_volatile [(const_int 0)] UNSPECV_BLOCKAGE)]
   ""
   "")
+
 ;;}}} 
