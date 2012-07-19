@@ -93,7 +93,7 @@
 #define EMPTY_FIELD_BOUNDARY 32
 
 /* Every structure's size must be a multiple of this.  */
-#define STRUCTURE_SIZE_BOUNDARY 32
+#define STRUCTURE_SIZE_BOUNDARY 8
 
 /* There is no point aligning anything to a rounder boundary than this.  */
 #define BIGGEST_ALIGNMENT LONG_LONG_TYPE_SIZE
@@ -123,6 +123,48 @@
 
 #define PCC_BITFIELD_TYPE_MATTERS 1
 
+/* If defined, a C expression to compute the alignment given to a
+   constant that is being placed in memory.  CONSTANT is the constant
+   and ALIGN is the alignment that the object would ordinarily have.
+   The value of this macro is used instead of that alignment to align
+   the object.
+
+   If this macro is not defined, then ALIGN is used.
+
+   The typical use of this macro is to increase alignment for string
+   constants to be word aligned so that `strcpy' calls that copy
+   constants can be done inline.  */
+
+#define CONSTANT_ALIGNMENT(EXP, ALIGN)					\
+  ((TREE_CODE (EXP) == STRING_CST  || TREE_CODE (EXP) == CONSTRUCTOR)	\
+   && (ALIGN) < BITS_PER_WORD ? BITS_PER_WORD : (ALIGN))
+
+/* If defined, a C expression to compute the alignment for a static
+   variable.  TYPE is the data type, and ALIGN is the alignment that
+   the object would ordinarily have.  The value of this macro is used
+   instead of that alignment to align the object.
+
+   If this macro is not defined, then ALIGN is used.
+
+   One use of this macro is to increase alignment of medium-size
+   data to make it all fit in fewer cache lines.  Another is to
+   cause character arrays to be word-aligned so that `strcpy' calls
+   that copy constants to character arrays can be done inline.  */
+
+#undef DATA_ALIGNMENT
+#define DATA_ALIGNMENT(TYPE, ALIGN)					\
+  ((((ALIGN) < BITS_PER_WORD)						\
+    && (TREE_CODE (TYPE) == ARRAY_TYPE					\
+	|| TREE_CODE (TYPE) == UNION_TYPE				\
+	|| TREE_CODE (TYPE) == RECORD_TYPE)) ? BITS_PER_WORD : (ALIGN))
+
+/* We need this for the same reason as DATA_ALIGNMENT, namely to cause
+   character arrays to be word-aligned so that `strcpy' calls that copy
+   constants to character arrays can be done inline, and 'strcmp' can be
+   optimised to use word loads. */
+#define LOCAL_ALIGNMENT(TYPE, ALIGN) \
+  DATA_ALIGNMENT (TYPE, ALIGN)
+
 /* Define if operations between registers always perform the operation
    on the full register even if a narrower mode is specified.  */
 #define WORD_REGISTER_OPERATIONS
@@ -130,6 +172,20 @@
 /* Define if loading short immediate values into registers sign extends.  */
 #define SHORT_IMMEDIATES_SIGN_EXTEND
 
+/* Define this macro if it is advisable to hold scalars in registers
+   in a wider mode than that declared by the program.  In such cases,
+   the value is constrained to be within the bounds of the declared
+   type, but kept valid in the wider mode.  The signedness of the
+   extension may differ from that of the type.  */
+
+#define PROMOTE_MODE(MODE, UNSIGNEDP, TYPE)	\
+  if (GET_MODE_CLASS (MODE) == MODE_INT		\
+      && GET_MODE_SIZE (MODE) < UNITS_PER_WORD) \
+    {                                           \
+      if ((MODE) == SImode)                     \
+        (UNSIGNEDP) = 0;                        \
+      (MODE) = Pmode;                           \
+    }
 
 /* Standard register usage.  */
 
@@ -579,7 +635,7 @@ enum reg_class
    accesses, using word accesses is preferable since it may eliminate
    subsequent memory access if subsequent accesses occur to other fields in the
    same word of the structure, but to different bytes.  */
-#define SLOW_BYTE_ACCESS 0
+#define SLOW_BYTE_ACCESS 1
 
 
 /* Section selection.  */
