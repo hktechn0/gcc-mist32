@@ -315,9 +315,9 @@ mist32_mode_dependent_address_p (const_rtx addr)
 */
 
 #undef  TARGET_ASM_ALIGNED_HI_OP
-#define TARGET_ASM_ALIGNED_HI_OP "\t.hword\t"
+#define TARGET_ASM_ALIGNED_HI_OP "\t.word\t"
 #undef  TARGET_ASM_ALIGNED_SI_OP
-#define TARGET_ASM_ALIGNED_SI_OP "\t.word\t"
+#define TARGET_ASM_ALIGNED_SI_OP "\t.long\t"
 
 #undef  TARGET_PRINT_OPERAND
 #define TARGET_PRINT_OPERAND mist32_print_operand
