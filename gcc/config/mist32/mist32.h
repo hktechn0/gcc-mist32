@@ -35,6 +35,12 @@
     }						\
    while (0)
 
+#define TARGET_VERSION fprintf (stderr, " (mist32)");
+
+/* Use crt0/crtinit/crtfini files.  */
+#define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
+#define ENDFILE_SPEC  "crtend.o%s crtn.o%s"
+
 /* Specs for the compiler proper */
 #undef	CC1_SPEC
 #define	CC1_SPEC ""
@@ -43,8 +49,8 @@
 #ifndef LINK_SPEC
 #define LINK_SPEC ""
 #endif
-
 
+
 /* Target machine storage layout */
 #define BITS_BIG_ENDIAN 0
 #define BYTES_BIG_ENDIAN 1
