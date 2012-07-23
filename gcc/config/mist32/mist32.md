@@ -318,8 +318,8 @@
   "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
   "@
    move %0, %1
-   lil  %0, lo(%1)
-   ulil %0, lo(%1)
+   lil  %0, %1
+   ulil %0, %1
    lih  %0, hi(%1)
    ld32 %0, %1
    st32 %1, %0"
@@ -343,37 +343,32 @@
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,mT")))]
   ""
   "@
-   wh16 %0, 0x0000
+   get8 %0, 0
    ld8  %0, %1"
 )
 
 (define_insn "zero_extendhisi2"
-  [(set (match_operand:SI 0 "register_operand"                "=r")
-	(zero_extend:SI (match_operand:HI 1 "register_operand" "0")))]
+  [(set (match_operand:SI 0 "register_operand"                "=r,r")
+	(zero_extend:SI (match_operand:HI 1 "register_operand" "0,mT")))]
   ""
-  "wh16 %0, 0x0000"
+  "wh16 %0, 0x0000
+   ld16 %0, %1"
 )
 
 ;; Signed conversions from a smaller integer to a larger integer
 
 (define_insn "extendqisi2"
-  [(set (match_operand:SI 0 "nonimmediate_operand"                "=r,r,mT")
-	(sign_extend:SI (match_operand:QI 1 "nonimmediate_operand" "r,mT,r")))]
+  [(set (match_operand:SI 0 "nonimmediate_operand"                "=r")
+	(sign_extend:SI (match_operand:QI 1 "nonimmediate_operand" "r")))]
   ""
-  "@
-   sext8 %0, %1
-   ld8   %0, %1
-   st8   %1, %0"
+  "sext8 %0, %1"
 )
 
 (define_insn "extendhisi2"
-  [(set (match_operand:SI 0 "nonimmediate_operand"                "=r,r,mT")
-	(sign_extend:SI (match_operand:HI 1 "nonimmediate_operand" "r,mT,r")))]
+  [(set (match_operand:SI 0 "nonimmediate_operand"                "=r")
+	(sign_extend:SI (match_operand:HI 1 "nonimmediate_operand" "r")))]
   ""
-  "@
-   sext16 %0, %1
-   ld16   %0, %1
-   st16   %1, %0"
+  "sext16 %0, %1"
 )
 
 ;;}}} 
@@ -683,7 +678,7 @@
   "*
 {
   if (lih_wl16_operand (operands[0], FUNCTION_MODE))
-    return \"lih rtmp,hi(%0)\n\twl16 rtmp,lo(%0)\n\tmovepc rret, 8\n\tb rtmp,#al\";
+    return \"lih rtmp, hi(%0)\n\twl16 rtmp, lo(%0)\n\tmovepc rret, 8\n\tb rtmp, #al\";
   else
     return \"movepc rret, 8\n\tb %0, #al\";
 }
@@ -727,7 +722,7 @@
   "*
 {
   if (lih_wl16_operand (operands[1], FUNCTION_MODE))
-    return \"lih rtmp,hi(%1)\n\twl16 rtmp,lo(%1)\n\tmovepc rret, 8\n\tb rtmp,#al\";
+    return \"lih rtmp, hi(%1)\n\twl16 rtmp, lo(%1)\n\tmovepc rret, 8\n\tb rtmp, #al\";
   else
     return \"movepc rret, 8\n\tb %1, #al\";
 }
