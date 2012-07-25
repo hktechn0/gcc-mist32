@@ -93,13 +93,13 @@
   [(set (mem:SI (pre_dec:SI (reg:SI STACK_POINTER_REGNUM)))
 	(match_operand:SI 0 "register_operand" "r"))]
   ""
-  "push %0")
+  "push\t%0")
 
 (define_insn "popsi1"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(mem:SI (post_inc:SI (reg:SI STACK_POINTER_REGNUM))))]
   ""
-  "pop %0")
+  "pop\t%0")
 
 (define_expand "add_stack_pointer"
   [(set (reg:SI STACK_POINTER_REGNUM)
@@ -152,14 +152,14 @@
   [(set (match_operand:QI 0         "register_operand" "=r")
 	(mem:QI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "ld8 %0, %1"
+  "ld8\t%0, %1"
 )
 
 (define_insn "*storeqi_mem"
   [(set (mem:QI (match_operand:SI 0 "register_operand" "r"))
 	(match_operand:QI 1         "register_operand" "r"))]
   ""
-  "st8 %1, %0"
+  "st8\t%1, %0"
 )
 
 (define_insn "*movqi_insn"
@@ -167,10 +167,10 @@
 	(match_operand:QI 1 "general_operand"       "r,J,mT,r"))]
   "register_operand (operands[0], QImode) || register_operand (operands[1], QImode)"
   "@
-   move %0, %1
-   lil  %0, %1
-   ld8  %0, %1
-   st8  %1, %0"
+   move\t%0, %1
+   lil\t%0, %1
+   ld8\t%0, %1
+   st8\t%1, %0"
 )
 
 ;;}}}
@@ -193,14 +193,14 @@
   [(set (match_operand:HI 0         "register_operand" "=r")
 	(mem:HI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "ld16 %0, %1"
+  "ld16\t%0, %1"
 )
 
 (define_insn "*storehi_mem"
   [(set (mem:HI (match_operand:SI 0 "register_operand" "r"))
 	(match_operand:HI 1         "register_operand" "r"))]
   ""
-  "st16 %1, %0"
+  "st16\t%1, %0"
 )
 
 (define_insn "*movhi_insn"
@@ -208,11 +208,11 @@
 	(match_operand:HI 1 "general_operand"       "r,J,K,mT,r"))]
   "register_operand (operands[0], HImode) || register_operand (operands[1], HImode)"
   "@
-   move  %0, %1
-   lil   %0, %1
-   ulil  %0, %1
-   ld16  %0, %1
-   st16  %1, %0"
+   move\t%0, %1
+   lil\t%0, %1
+   ulil\t%0, %1
+   ld16\t%0, %1
+   st16\t%1, %0"
 )
 
 ;;}}}
@@ -247,13 +247,13 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(reg:SI STACK_POINTER_REGNUM))]
   ""
-  "srspr %0"
+  "srspr\t%0"
 )
 (define_insn "save_stack_pointer"
   [(set (reg:SI STACK_POINTER_REGNUM)
 	(match_operand:SI 0 "register_operand" "r"))]
   ""
-  "srspw %0"
+  "srspw\t%0"
 )
 
 (define_split
@@ -287,7 +287,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(high:SI (match_operand 1 "lih_wl16_operand" "")))]
   ""
-  "lih %0, hi(%1)"
+  "lih\t%0, hi(%1)"
 )
 
 (define_insn "lo_sum_si"
@@ -295,21 +295,21 @@
 	(lo_sum:SI (match_operand:SI 1 "register_operand" "0")
 		   (match_operand:SI 2 "lih_wl16_operand" "")))]
   ""
-  "wl16 %0, lo(%2)"
+  "wl16\t%0, lo(%2)"
 )
 
 (define_insn "*loadsi_mem"
   [(set (match_operand:SI         0 "register_operand" "=r")
 	(mem:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "ld32 %0, %1"
+  "ld32\t%0, %1"
 )
 
 (define_insn "*storesi_mem"
   [(set (mem:SI (match_operand:SI 0 "register_operand" "r"))
 	(match_operand:SI         1 "register_operand" "r"))]
   ""
-  "st32 %1, %0"
+  "st32\t%1, %0"
 )
 
 (define_insn "*movsi_insn"
@@ -317,12 +317,12 @@
 	(match_operand:SI 1 "general_operand"       "r,J,K,L,mT,r"))]
   "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
   "@
-   move %0, %1
-   lil  %0, %1
-   ulil %0, %1
-   lih  %0, hi(%1)
-   ld32 %0, %1
-   st32 %1, %0"
+   move\t%0, %1
+   lil\t%0, %1
+   ulil\t%0, %1
+   lih\t%0, hi(%1)
+   ld32\t%0, %1
+   st32\t%1, %0"
 )
 
 ;;}}}
@@ -343,16 +343,16 @@
 	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,mT")))]
   ""
   "@
-   get8 %0, 0
-   ld8  %0, %1"
+   get8\t%0, 0
+   ld8\t%0, %1"
 )
 
 (define_insn "zero_extendhisi2"
   [(set (match_operand:SI 0 "register_operand"                "=r,r")
 	(zero_extend:SI (match_operand:HI 1 "register_operand" "0,mT")))]
   ""
-  "wh16 %0, 0x0000
-   ld16 %0, %1"
+  "wh16\t%0, 0x0000
+   ld16\t%0, %1"
 )
 
 ;; Signed conversions from a smaller integer to a larger integer
@@ -361,14 +361,14 @@
   [(set (match_operand:SI 0 "nonimmediate_operand"                "=r")
 	(sign_extend:SI (match_operand:QI 1 "nonimmediate_operand" "r")))]
   ""
-  "sext8 %0, %1"
+  "sext8\t%0, %1"
 )
 
 (define_insn "extendhisi2"
   [(set (match_operand:SI 0 "nonimmediate_operand"                "=r")
 	(sign_extend:SI (match_operand:HI 1 "nonimmediate_operand" "r")))]
   ""
-  "sext16 %0, %1"
+  "sext16\t%0, %1"
 )
 
 ;;}}} 
@@ -381,22 +381,22 @@
 		 (match_operand:SI 2 "nonmemory_operand" "r,I")))]
   ""
   "@
-   add %0, %2
-   add %0, %2"
+   add\t%0, %2
+   add\t%0, %2"
 )
 
 (define_insn "increment"
   [(set (match_operand:SI 0 "register_operand"            "=r")
 	(pre_inc:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "inc %0, %1"
+  "inc\t%0, %1"
 )
 
 (define_insn "decrement"
   [(set (match_operand:SI 0 "register_operand"            "=r")
 	(pre_dec:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "dec %0, %1"
+  "dec\t%0, %1"
 )
 
 ;;}}}
@@ -408,8 +408,8 @@
 		  (match_operand:SI 2 "nonmemory_operand" "r,I")))]
   ""
   "@
-   sub %0, %2
-   sub %0, %2"
+   sub\t%0, %2
+   sub\t%0, %2"
 )
 
 ;;}}}
@@ -422,8 +422,8 @@
 		 (sign_extend:SI (match_operand:HI 2 "register_operand"  "r,I"))))]
   ""
   "@
-   mull %0, %2
-   mull %0, %2"
+   mull\t%0, %2
+   mull\t%0, %2"
 )
 
 ;; Signed multiplication producing 32-bit result from 32-bit inputs
@@ -433,8 +433,8 @@
 		 (match_operand:SI 2 "register_operand"  "r,I")))]
   ""
   "@
-   mull %0, %2
-   mull %0, %2"
+   mull\t%0, %2
+   mull\t%0, %2"
 )
 
 ;;}}}
@@ -447,8 +447,8 @@
 		(match_operand:SI 2 "register_operand" "r,I")))]
   ""
   "@
-   div %0, %2
-   div %0, %2"
+   div\t%0, %2
+   div\t%0, %2"
 )
 
 ;; Unigned division
@@ -458,8 +458,8 @@
 		 (match_operand:SI 2 "register_operand" "r,M")))]
   ""
   "@
-   udiv %0, %2
-   udiv %0, %2"
+   udiv\t%0, %2
+   udiv\t%0, %2"
 )
 
 ;; Signed modulo operation
@@ -469,8 +469,8 @@
 		(match_operand:SI 2 "register_operand" "r,I")))]
   ""
   "@
-   mod %0, %2
-   mod %0, %2"
+   mod\t%0, %2
+   mod\t%0, %2"
 )
 
 ;; Unsigned modulo operation
@@ -480,8 +480,8 @@
 		 (match_operand:SI 2 "register_operand" "r,M")))]
   ""
   "@
-   umod %0, %2
-   umod %0, %2"
+   umod\t%0, %2
+   umod\t%0, %2"
 )
 
 ;;}}}
@@ -495,8 +495,8 @@
 		   (match_operand:SI 2 "nonmemory_operand" "r,M")))]
   ""
   "@
-   shl %0, %2
-   shl %0, %2"
+   shl\t%0, %2
+   shl\t%0, %2"
 )
 
 ;; Arithmetic Shift Right
@@ -506,8 +506,8 @@
 		     (match_operand:SI 2 "nonmemory_operand" "r,M")))]
   ""
   "@
-   sar %0, %2
-   sar %0, %2"
+   sar\t%0, %2
+   sar\t%0, %2"
 )
 
 ;; Logical Shift Right
@@ -517,8 +517,8 @@
 		     (match_operand:SI 2 "nonmemory_operand" "r,M")))]
   ""
   "@
-   shr %0, %2
-   shr %0, %2"
+   shr\t%0, %2
+   shr\t%0, %2"
 )
 
 ;;}}} 
@@ -530,7 +530,7 @@
 	(and:SI (match_operand:SI 1 "register_operand" "%0")
 		(match_operand:SI 2 "nonmemory_operand" "r")))]
   ""
-  "and %0, %2"
+  "and\t%0, %2"
 )
 
 ;; Inclusive OR, 32-bit integers
@@ -539,7 +539,7 @@
 	(ior:SI (match_operand:SI 1 "register_operand" "%0")
 		(match_operand:SI 2 "nonmemory_operand" "r")))]
   ""
-  "or %0, %2"
+  "or\t%0, %2"
 )
 
 ;; Exclusive OR, 32-bit integers
@@ -548,7 +548,7 @@
 	(xor:SI (match_operand:SI 1 "register_operand" "%0")
 		(match_operand:SI 2 "nonmemory_operand" "r")))]
   ""
-  "xor %0, %2"
+  "xor\t%0, %2"
 )
 
 ;; Negative (Zero's comlement), 32-bit integers
@@ -556,7 +556,7 @@
   [(set (match_operand:SI 0 "register_operand"        "=r")
 	(neg:SI (match_operand:SI 1 "register_operand" "0")))]
   ""
-  "neg %0"
+  "neg\t%0"
 )
 
 ;; One's complement (Logical Not), 32-bit integers
@@ -564,7 +564,7 @@
   [(set (match_operand:SI 0 "register_operand"        "=r")
 	(not:SI (match_operand:SI 1 "register_operand" "0")))]
   ""
-  "not %0"
+  "not\t%0"
 )
 
 ;;}}} 
@@ -578,8 +578,8 @@
 		    (match_operand:SI 1 "nonmemory_operand" "r,I")))]
   ""
   "@
-   cmp %0, %1
-   cmp %0, %1"
+   cmp\t%0, %1
+   cmp\t%0, %1"
 )
 
 ;;}}} 
@@ -609,7 +609,7 @@
 		      (label_ref (match_operand 1 "" ""))
 		      (pc)))]
   ""
-  "br %1, #%b0"
+  "br\t%1, #%b0"
 )
 
 (define_insn "*branch_false"
@@ -619,7 +619,7 @@
 		      (pc)
 		      (label_ref (match_operand 1 "" ""))))]
   ""
-  "br %1, #%B0"
+  "br\t%1, #%B0"
 )
 
   ; evalution length attr first, check if label distance from PC.
@@ -667,7 +667,7 @@
 	 (match_operand 1 "" ""))
    (clobber (reg:SI RETURN_POINTER_REGNUM))]
   ""
-  "movepc rret, 8\n\tb %0, #al \t; call_reg"
+  "movepc\trret, 8\n\tb\t%0, #al\t; call_reg"
 )
 
 (define_insn "*call_label"
@@ -678,9 +678,9 @@
   "*
 {
   if (lih_wl16_operand (operands[0], FUNCTION_MODE))
-    return \"lih rtmp, hi(%0)\n\twl16 rtmp, lo(%0)\n\tmovepc rret, 8\n\tb rtmp, #al\";
+    return \"lih\trtmp, hi(%0)\n\twl16\trtmp, lo(%0)\n\tmovepc\trret, 8\n\tb\trtmp, #al\";
   else
-    return \"movepc rret, 8\n\tb %0, #al\";
+    return \"movepc\trret, 8\n\tb\t%0, #al\";
 }
 ")
 
@@ -710,7 +710,7 @@
 	      (match_operand 2 "" "")))
    (clobber (reg:SI RETURN_POINTER_REGNUM))]
   ""
-  "movepc rret, 8\n\tb %1, #al \t; call"
+  "movepc\trret, 8\n\tb\t%1, #al\t; call"
 )
 
 (define_insn "*call_value_internal_label"
@@ -722,9 +722,9 @@
   "*
 {
   if (lih_wl16_operand (operands[1], FUNCTION_MODE))
-    return \"lih rtmp, hi(%1)\n\twl16 rtmp, lo(%1)\n\tmovepc rret, 8\n\tb rtmp, #al\";
+    return \"lih\trtmp, hi(%1)\n\twl16\trtmp, lo(%1)\n\tmovepc\trret, 8\n\tb\trtmp, #al\";
   else
-    return \"movepc rret, 8\n\tb %1, #al\";
+    return \"movepc\trret, 8\n\tb\t%1, #al\";
 }
 ")
 
@@ -734,7 +734,7 @@
 	(plus:SI (pc)
 		 (match_operand 1 "immediate_operand" "I")))]
   ""
-  "movepc %0, %1"
+  "movepc\t%0, %1"
 )
 
 ;; Normal unconditional jump.
@@ -745,11 +745,11 @@
   ""
 {
   if (get_attr_length (insn) <= 4)
-    return "br %0, #al";
+    return "br\t%0, #al";
   else
     {
       operands[0] = force_reg (Pmode, operands[0]);
-      return "br %0, #al";
+      return "br\t%0, #al";
     }
 } 
   ; We use 130000/260000 instead of 131072/262144 [(16 << 2) bits] 
@@ -766,13 +766,13 @@
 (define_insn "indirect_jump"
   [(set (pc) (match_operand:SI 0 "nonimmediate_operand" "r"))]
   "GET_CODE (operands[0]) != MEM || GET_CODE (XEXP (operands[0], 0)) != PLUS"
-  "b %0, #al"
+  "b\t%0, #al"
 )
 
 (define_insn "return_rret"
   [(parallel [(return) (use (reg:SI RETURN_POINTER_REGNUM))])]
   ""
-  "b rret, #al"
+  "b\trret, #al"
 )
 
 (define_expand "return"
@@ -798,14 +798,14 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand 1 "" "")] UNSPEC_PIC_LOAD_ADDR))]
   "flag_pic"
-  "lil %0, %1"
+  "lil\t%0, %1"
 )
 
 (define_insn "gotoff_load_addr"
   [(set (match_operand:SI 0 "register_operand" "=r")
         (unspec:SI [(match_operand 1 "" "")] UNSPEC_GOTOFF))]
   "flag_pic"
-  "lih %0, hi(%1@GOTOFF)\;wl16 %0, lo(%1@GOTOFF)"
+  "lih\t%0, hi(%1@GOTOFF)\n\twl16\t%0, lo(%1@GOTOFF)"
   [(set_attr "length"	"8")]
 )
 

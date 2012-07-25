@@ -646,9 +646,9 @@ enum reg_class
 
 /* Section selection.  */
 
-#define TEXT_SECTION_ASM_OP	"\t.section .text"
-#define DATA_SECTION_ASM_OP	"\t.section .data"
-#define BSS_SECTION_ASM_OP	"\t.section .bss"
+#define TEXT_SECTION_ASM_OP	"\t.section\t.text"
+#define DATA_SECTION_ASM_OP	"\t.section\t.data"
+#define BSS_SECTION_ASM_OP	"\t.section\t.bss"
 
 /* How to start an assembler comment.
    The leading space is important (the mist32 native assembler requires it).  */
