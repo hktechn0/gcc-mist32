@@ -332,7 +332,7 @@ void
 mist32_print_operand (FILE *file, rtx x, int code)
 {
   rtx x0;
-  
+
   switch (code)
     {
     case 'b':
