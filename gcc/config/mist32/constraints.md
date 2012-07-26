@@ -54,12 +54,21 @@
 
 ;; Extra constraints.
 (define_constraint "Q"
-  "@internal"
+  "symbol_ref"
   (and (match_code "mem")
        (match_code "symbol_ref" "0")))
+
+(define_constraint "R"
+  "offsettable symbolic address constant"
+  (and (match_code "const")
+       (match_test "GET_CODE (XEXP(op, 0)) == PLUS")
+       (match_test "symbolic_operand (XEXP (XEXP (op, 0), 0), Pmode)")
+       (match_test "CONST_INT_P (XEXP (XEXP (op, 0), 1))"))
+)
 
 (define_constraint "T"
   "An indirect of a pointer."
   (and (match_code "mem")
        (match_test "MEM_P (op) && REG_P (XEXP (op, 0))"))
 )
+

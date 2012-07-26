@@ -258,6 +258,21 @@
 
 (define_split
   [(set (match_operand:SI 0 "register_operand" "")
+	(const:SI (plus:SI (match_operand:SI 1 "symbolic_operand" "")
+			   (match_operand:SI 2 "const_int_operand" ""))))]
+  ""
+  [(set (match_dup 0)
+	(high:SI (match_dup 1)))
+   (set (match_dup 0)
+	(lo_sum:SI (match_dup 0)
+		   (match_dup 1)))
+   (set (match_dup 0)
+	(plus:SI (match_dup 0) (match_dup 2)))]
+   ""
+)
+
+(define_split
+  [(set (match_operand:SI 0 "register_operand" "")
 	(match_operand:SI 1 "lih_wl16_operand" ""))]
   ""
   [(set (match_dup 0)
@@ -313,8 +328,8 @@
 )
 
 (define_insn "*movsi_insn"
-  [(set (match_operand:SI 0 "nonimmediate_operand" "=r,r,r,r,r,mT")
-	(match_operand:SI 1 "general_operand"       "r,J,K,L,mT,r"))]
+  [(set (match_operand:SI 0 "nonimmediate_operand" "=r,r,r,r,r,mT,r")
+	(match_operand:SI 1 "general_operand"       "r,J,K,L,mT,r,R"))]
   "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
   "@
    move\t%0, %1
@@ -322,7 +337,8 @@
    ulil\t%0, %1
    lih\t%0, hi(%1)
    ld32\t%0, %1
-   st32\t%1, %0"
+   st32\t%1, %0
+   #"
 )
 
 ;;}}}

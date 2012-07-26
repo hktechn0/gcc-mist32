@@ -22,11 +22,11 @@
 
 ;; Acceptable arguments to the call insn.
 (define_predicate "call_operand"
-  (match_code "reg,symbol_ref,label_ref,const")
+  (match_code "reg,symbol_ref,label_ref,const_int")
 )
 
 (define_predicate "call_address_operand"
-  (match_code "symbol_ref,label_ref,const")
+  (match_code "symbol_ref,label_ref,const_int")
 )
 
 ;; Return true if OP is a const_int requiring two instructions to
@@ -72,6 +72,14 @@
 
   if (two_insn_const_operand (op, mode))
     return 1;
+
+/*
+  if (GET_CODE (op) == CONST
+      && GET_CODE (XEXP (op, 0)) == PLUS
+      && GET_CODE (XEXP (XEXP (op, 0), 0)) == SYMBOL_REF
+      && satisfies_constraint_J (XEXP (XEXP (op, 0), 1)))
+    return 1;
+*/
 
   return 0;
 })
