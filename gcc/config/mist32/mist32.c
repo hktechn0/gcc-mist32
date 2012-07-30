@@ -86,18 +86,18 @@ static struct mist32_frame_info 	zero_frame_info;
 /* Tell prologue and epilogue if register REGNO should be saved / restored.
    The return address and frame pointer are treated separately.
    Don't consider them here.  */
-#define MUST_SAVE_REGISTER(regno)					\
+#define MUST_SAVE_REGISTER(regno, interrupt_p)					\
   ((regno) != RETURN_POINTER_REGNUM && (regno) != FRAME_POINTER_REGNUM	\
-   && (df_regs_ever_live_p (regno) && (!call_really_used_regs[regno])))
+   && (df_regs_ever_live_p (regno) && (!call_really_used_regs[regno] || interrupt_p)))
 
 #define MUST_SAVE_FRAME_POINTER	 (df_regs_ever_live_p (FRAME_POINTER_REGNUM))
 #define MUST_SAVE_RETURN_POINTER (df_regs_ever_live_p (RETURN_POINTER_REGNUM) || crtl->profile)
 
 /* The value of TARGET_ATTRIBUTE_TABLE.  */
 static const struct attribute_spec mist32_attribute_table[] = {
-  /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler,
-       om_diagnostic } */
-  { NULL,	   0, 0, false, false, false, NULL, false }
+  /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler } */
+  { "interrupt", 0, 0, true,  false, false, NULL },
+  { NULL,        0, 0, false, false, false, NULL }
 };
 
 /* Initialize the GCC target structure.  */
@@ -720,6 +720,39 @@ mist32_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
           : true);
 }
 
+/* Type of function DECL.
+
+   The result is cached.  To reset the cache at the end of a function,
+   call with DECL = NULL_TREE.  */
+
+enum mist32_function_type
+mist32_compute_function_type (tree decl)
+{
+  /* Cached value.  */
+  static enum mist32_function_type fn_type = MIST32_FUNCTION_UNKNOWN;
+  /* Last function we were called for.  */
+  static tree last_fn = NULL_TREE;
+
+  /* Resetting the cached value?  */
+  if (decl == NULL_TREE)
+    {
+      fn_type = MIST32_FUNCTION_UNKNOWN;
+      last_fn = NULL_TREE;
+      return fn_type;
+    }
+
+  if (decl == last_fn && fn_type != MIST32_FUNCTION_UNKNOWN)
+    return fn_type;
+
+  /* Compute function type.  */
+  fn_type = (lookup_attribute ("interrupt", DECL_ATTRIBUTES (current_function_decl)) != NULL_TREE
+	     ? MIST32_FUNCTION_INTERRUPT
+	     : MIST32_FUNCTION_NORMAL);
+
+  last_fn = decl;
+  return fn_type;
+}
+
 /* Returns the number of bytes offset between FROM_REG and TO_REG
    for the current function.  As a side effect it fills in the 
    current_frame_info structure, if the data is available.  */
@@ -730,10 +763,8 @@ mist32_compute_frame_size (int size)	/* # of var. bytes allocated.  */
   unsigned int total_size, var_size, args_size, pretend_size, extra_size;
   unsigned int reg_size;
   unsigned int gmask;
-  /*
-    enum mist32_function_type fn_type;
-    int interrupt_p;
-  */
+  enum mist32_function_type fn_type;
+  int interrupt_p;
 
   var_size	= MIST32_STACK_ALIGN (size);
   args_size	= MIST32_STACK_ALIGN (crtl->outgoing_args_size);
@@ -744,15 +775,14 @@ mist32_compute_frame_size (int size)	/* # of var. bytes allocated.  */
   gmask		= 0;
 
   /* See if this is an interrupt handler.  Call used registers must be saved
-     for them too.  
+     for them too.  */
   fn_type = mist32_compute_function_type (current_function_decl);
-  interrupt_p = M32R_INTERRUPT_P (fn_type);
-  */
+  interrupt_p = MIST32_INTERRUPT_P (fn_type);
 
   /* Calculate space needed for registers.  */
   for (regno = GP_REG_FIRST; regno <= GP_REG_LAST; regno++)
     {
-      if (MUST_SAVE_REGISTER (regno))
+      if (MUST_SAVE_REGISTER (regno, interrupt_p))
 	{
 	  reg_size += UNITS_PER_WORD;
 	  gmask |= 1 << regno;
@@ -865,12 +895,11 @@ mist32_expand_prologue (void)
 static void
 mist32_output_function_prologue (FILE * file, HOST_WIDE_INT size)
 {
-  /*enum mist32_function_type fn_type = mist32_compute_function_type (current_function_decl);*/
+  enum mist32_function_type fn_type = mist32_compute_function_type (current_function_decl);
 
-  /* If this is an interrupt handler, mark it as such.  
+  /* If this is an interrupt handler, mark it as such.  */
   if (MIST32_INTERRUPT_P (fn_type))
     fprintf (file, "\t%s interrupt handler\n", ASM_COMMENT_START);
-  */
 
   if (! current_frame_info.initialized)
     mist32_compute_frame_size (size);
@@ -991,7 +1020,25 @@ mist32_output_function_epilogue (FILE * file ATTRIBUTE_UNUSED,
 {
   /* Reset state info for each function.  */
   current_frame_info = zero_frame_info;
-  /*mist32_compute_function_type (NULL_TREE);*/
+  mist32_compute_function_type (NULL_TREE);
+}
+
+/* Return nonzero if this function is known to have a null or 1 instruction
+   epilogue.  */
+
+int
+direct_return (void)
+{
+  if (!reload_completed)
+    return FALSE;
+
+  if (MIST32_INTERRUPT_P (mist32_compute_function_type (current_function_decl)))
+    return FALSE;
+
+  if (! current_frame_info.initialized)
+    mist32_compute_frame_size (get_frame_size ());
+
+  return current_frame_info.total_size == 0;
 }
 
 rtx
