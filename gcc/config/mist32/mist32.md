@@ -780,7 +780,7 @@
 
 ;; Indirect jump through a register
 (define_insn "indirect_jump"
-  [(set (pc) (match_operand:SI 0 "address_operand" "K"))]
+  [(set (pc) (match_operand:SI 0 "address_operand" "r"))]
   ""
   "b\t%0, #al"
 )
