@@ -74,7 +74,7 @@
   "
 {
   mist32_expand_epilogue ();
-  emit_jump_insn (gen_return ());
+  emit_jump_insn (gen_return_normal ());
   DONE;
 }")
 
@@ -638,8 +638,8 @@
   "br\t%1, #%B0"
 )
 
-  ; evalution length attr first, check if label distance from PC.
-  ; after, generate branch insn using length_attr.
+; evalution length attr first, check if label distance from PC.
+; after, generate branch insn using length_attr.
 ;{
 ;  if (get_attr_length (insn) <= 4)
 ;    return "br %1, #%b0";
@@ -649,9 +649,9 @@
 ;      return "br %1, #%b0";
 ;    }
 ;} 
-  ; We use 130000/260000 instead of 131072/262144 [(16 << 2) bits] 
-  ; to account for slot filling
-  ; which is complex to track and inaccurate length specs.
+; We use 130000/260000 instead of 131072/262144 [(16 << 2) bits] 
+; to account for slot filling
+; which is complex to track and inaccurate length specs.
 ;  [(set (attr "length") (if_then_else (ltu (plus (minus (match_dup 1) (pc))
 ;						 (const_int 130000))
 ;					   (const_int 260000))
@@ -768,9 +768,9 @@
       return "br\t%0, #al";
     }
 } 
-  ; We use 130000/260000 instead of 131072/262144 [(16 << 2) bits] 
-  ; to account for slot filling
-  ; which is complex to track and inaccurate length specs.
+; We use 130000/260000 instead of 131072/262144 [(16 << 2) bits] 
+; to account for slot filling
+; which is complex to track and inaccurate length specs.
 ;  [(set (attr "length") (if_then_else (ltu (plus (minus (match_dup 1) (pc))
 ;						 (const_int 130000))
 ;					   (const_int 260000))
@@ -780,8 +780,8 @@
 
 ;; Indirect jump through a register
 (define_insn "indirect_jump"
-  [(set (pc) (match_operand:SI 0 "nonimmediate_operand" "r"))]
-  "GET_CODE (operands[0]) != MEM || GET_CODE (XEXP (operands[0], 0)) != PLUS"
+  [(set (pc) (match_operand:SI 0 "address_operand" "K"))]
+  ""
   "b\t%0, #al"
 )
 
@@ -791,15 +791,39 @@
   "b\trret, #al"
 )
 
-(define_expand "return"
+(define_insn "return_ib"
   [(return)]
   ""
+  "ib"
+)
+
+(define_expand "return"
+  [(return)]
+  "direct_return ()"
   "
 {
   emit_jump_insn (gen_return_rret ());
   DONE;
 }
 ")
+
+(define_expand "return_normal"
+  [(return)]
+  "!direct_return ()"
+  "
+{
+  enum mist32_function_type fn_type;
+
+  fn_type = mist32_compute_function_type (current_function_decl);
+  if (MIST32_INTERRUPT_P (fn_type))
+    {
+      emit_jump_insn (gen_return_ib ());
+      DONE;
+    }
+
+  emit_jump_insn (gen_return_rret ());
+  DONE;
+}")
 
 ;;}}} 
 

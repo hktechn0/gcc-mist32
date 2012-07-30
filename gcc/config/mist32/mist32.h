@@ -745,3 +745,11 @@ enum reg_class
       && (GET_CODE (XEXP (XEXP (X, 0), 0)) == SYMBOL_REF || GET_CODE (XEXP (XEXP (X, 0), 0)) == LABEL_REF) \
       && CONST_INT_P (XEXP (XEXP (X, 0), 1))				\
       && (unsigned HOST_WIDE_INT) INTVAL (XEXP (XEXP (X, 0), 1)) > 0x3ff))
+
+/* mist32 function types.  */
+enum mist32_function_type
+{
+  MIST32_FUNCTION_UNKNOWN, MIST32_FUNCTION_NORMAL, MIST32_FUNCTION_INTERRUPT
+};
+
+#define MIST32_INTERRUPT_P(TYPE) ((TYPE) == MIST32_FUNCTION_INTERRUPT)
