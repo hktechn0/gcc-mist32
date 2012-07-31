@@ -388,6 +388,10 @@ mips*-*-*)
 	extra_headers="loongson.h"
 	extra_options="${extra_options} g.opt"
 	;;
+mist32-*-*)
+        cpu_type=mist32
+	extra_options="${extra_options} g.opt"
+        ;;
 picochip-*-*)
         cpu_type=picochip
         ;;
@@ -1012,6 +1016,7 @@ frv-*-*linux*)
 	;;
 mist32-*-elf)
 	tm_file="dbxelf.h elfos.h newlib-stdint.h ${tm_file}"
+	tmake_file="mist32/t-mist32"
 	;;
 moxie-*-elf)
 	gas=yes
