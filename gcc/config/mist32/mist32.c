@@ -86,9 +86,11 @@ static struct mist32_frame_info 	zero_frame_info;
 /* Tell prologue and epilogue if register REGNO should be saved / restored.
    The return address and frame pointer are treated separately.
    Don't consider them here.  */
-#define MUST_SAVE_REGISTER(regno, interrupt_p)					\
+#define MUST_SAVE_REGISTER(regno, interrupt_p)				\
   ((regno) != RETURN_POINTER_REGNUM && (regno) != FRAME_POINTER_REGNUM	\
-   && (df_regs_ever_live_p (regno) && (!call_really_used_regs[regno] || interrupt_p)))
+    && (df_regs_ever_live_p (regno)					\
+	&& (!call_really_used_regs[regno] || interrupt_p))		\
+   || (interrupt_p && regno == TMP_REGNUM)) /* FIXME: ugly hack in interrupt function */
 
 #define MUST_SAVE_FRAME_POINTER	 (df_regs_ever_live_p (FRAME_POINTER_REGNUM))
 #define MUST_SAVE_RETURN_POINTER (df_regs_ever_live_p (RETURN_POINTER_REGNUM) || crtl->profile)
