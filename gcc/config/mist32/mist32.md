@@ -367,7 +367,8 @@
   [(set (match_operand:SI 0 "register_operand"                "=r,r")
 	(zero_extend:SI (match_operand:HI 1 "register_operand" "0,mT")))]
   ""
-  "wh16\t%0, 0x0000
+  "@
+   wh16\t%0, 0x0000
    ld16\t%0, %1"
 )
 
