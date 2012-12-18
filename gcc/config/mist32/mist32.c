@@ -747,7 +747,7 @@ mist32_compute_function_type (tree decl)
     return fn_type;
 
   /* Compute function type.  */
-  fn_type = (lookup_attribute ("interrupt", DECL_ATTRIBUTES (current_function_decl)) != NULL_TREE
+ fn_type = (lookup_attribute ("interrupt", DECL_ATTRIBUTES (current_function_decl)) != NULL_TREE
 	     ? MIST32_FUNCTION_INTERRUPT
 	     : MIST32_FUNCTION_NORMAL);
 
@@ -1017,9 +1017,13 @@ mist32_expand_epilogue (void)
    and regs.  */
 
 static void
-mist32_output_function_epilogue (FILE * file ATTRIBUTE_UNUSED,
+mist32_output_function_epilogue (FILE * file,
 				 HOST_WIDE_INT size ATTRIBUTE_UNUSED)
 {
+  /* This is only for the human reader.  */
+  fprintf (file, "\t%s EPILOGUE\n", ASM_COMMENT_START);
+
+
   /* Reset state info for each function.  */
   current_frame_info = zero_frame_info;
   mist32_compute_function_type (NULL_TREE);
