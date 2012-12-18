@@ -420,9 +420,6 @@ enum reg_class
    registers.  This macro must be defined if `ELIMINABLE_REGS' is
    defined.  */
 #define INITIAL_ELIMINATION_OFFSET(FROM, TO, OFFSET)			\
-     (OFFSET) = mist32_compute_frame_size (get_frame_size ())
-/*
-#define INITIAL_ELIMINATION_OFFSET(FROM, TO, OFFSET)			\
   do									\
     {									\
       int size = mist32_compute_frame_size (get_frame_size ());		\
@@ -437,7 +434,6 @@ enum reg_class
 	gcc_unreachable ();						\
     }									\
   while (0)
-*/
 
 /* Allocate stack space for arguments at the beginning of each function.  */
 #define ACCUMULATE_OUTGOING_ARGS 1
