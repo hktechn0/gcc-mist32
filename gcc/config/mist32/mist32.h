@@ -295,6 +295,7 @@ enum reg_class
   NO_REGS,			/* no registers in set */
   GR_REGS,			/* integer registers */
   FP_REGS,			/* floating point registers */
+  SP_REG,			/* stack_pointer */
   ALL_REGS,			/* all registers */
   LIM_REG_CLASSES		/* max value + 1 */
 };
@@ -308,6 +309,7 @@ enum reg_class
   "NO_REGS",								\
   "GR_REGS",								\
   "FP_REGS",								\
+  "SP_REG",								\
   "ALL_REGS"								\
 }
 
@@ -327,6 +329,7 @@ enum reg_class
   { 0x00000000, 0x00000000 },	/* NO_REGS */				\
   { 0xffffffff, 0x00000000 },	/* GR_REGS */				\
   { 0x00000000, 0x00000000 },	/* FP_REGS */				\
+  { 0x00000000, 0x00000002 },	/* SP_REG */				\
   { 0xffffffff, 0xffffffff }	/* ALL_REGS */				\
 }
 
@@ -334,8 +337,9 @@ enum reg_class
    REGNO.  In general there is more than one such class; choose a class which
    is "minimal", meaning that no smaller class also contains the register.  */
 #define REGNO_REG_CLASS(REGNO) 			\
-  ( (REGNO) < 32 ? GR_REGS			\
-    : ALL_REGS)
+  ( (REGNO) < 32 ? GR_REGS :			\
+    ((REGNO) == 33 ? SP_REG			\
+     : ALL_REGS))
 
 /* A macro whose definition is the name of the class to which a
    valid base register must belong.  A base register is one used in
@@ -708,6 +712,8 @@ enum reg_class
 */
 
 #define INCOMING_RETURN_ADDR_RTX   gen_rtx_REG (Pmode, RETURN_POINTER_REGNUM)
+
+#define MASK_RETURN_ADDR GEN_INT (-3)
 
 /* Addressing modes, and classification of registers for them.  */
 
