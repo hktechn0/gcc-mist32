@@ -87,9 +87,9 @@ static struct mist32_frame_info 	zero_frame_info;
    The return address and frame pointer are treated separately.
    Don't consider them here.  */
 #define MUST_SAVE_REGISTER(regno, interrupt_p)				\
-  ((regno) != RETURN_POINTER_REGNUM && (regno) != FRAME_POINTER_REGNUM	\
+  (((regno) != RETURN_POINTER_REGNUM && (regno) != FRAME_POINTER_REGNUM	\
     && (df_regs_ever_live_p (regno)					\
-	&& (!call_really_used_regs[regno] || interrupt_p))		\
+	&& (!call_really_used_regs[regno] || interrupt_p)))		\
    || (interrupt_p && regno == TMP_REGNUM)) /* FIXME: ugly hack in interrupt function */
 
 #define MUST_SAVE_FRAME_POINTER	 (df_regs_ever_live_p (FRAME_POINTER_REGNUM))

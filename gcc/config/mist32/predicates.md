@@ -29,6 +29,16 @@
   (match_code "symbol_ref,label_ref,const_int")
 )
 
+;; general register operand
+(define_predicate "general_register_operand"
+  (match_operand 0 "register_operand")
+{
+  if (GET_CODE (op) == SUBREG)
+    op = SUBREG_REG (op);
+
+  return GPR_P(REGNO(op));
+})
+
 ;; Return true if OP is a const_int requiring two instructions to
 ;; load.
 
