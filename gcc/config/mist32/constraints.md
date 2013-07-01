@@ -19,6 +19,8 @@
 ;; <http://www.gnu.org/licenses/>.
 
 ;; Register constraints
+(define_register_constraint "k" "SP_REG"
+  "Stack pointer register")
 
 ;; Integer constraints
 (define_constraint "I"
@@ -71,4 +73,3 @@
   (and (match_code "mem")
        (match_test "MEM_P (op) && REG_P (XEXP (op, 0))"))
 )
-
