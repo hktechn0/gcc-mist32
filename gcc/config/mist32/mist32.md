@@ -328,8 +328,8 @@
 )
 
 (define_insn "*movsi_insn"
-  [(set (match_operand:SI 0 "nonimmediate_operand" "=r,r,r,r,r,mT,r")
-	(match_operand:SI 1 "general_operand"       "r,J,K,L,mT,r,R"))]
+  [(set (match_operand:SI 0 "nonimmediate_operand" "=r,r,r,r,r,mT,r,k,r")
+	(match_operand:SI 1 "general_operand"       "r,J,K,L,mT,r,k,r,R"))]
   "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
   "@
    move\t%0, %1
@@ -338,6 +338,8 @@
    lih\t%0, hi(%1)
    ld32\t%0, %1
    st32\t%1, %0
+   srspr\t%0
+   srspw\t%1
    #"
 )
 
