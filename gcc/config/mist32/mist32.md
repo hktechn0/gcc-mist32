@@ -243,12 +243,21 @@
 }
 ")
 
+(define_insn "*movepc"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI (pc)
+		 (match_operand 1 "immediate_operand" "I")))]
+  ""
+  "movepc\t%0, %1"
+)
+
 (define_insn "load_stack_pointer"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(reg:SI STACK_POINTER_REGNUM))]
   ""
   "srspr\t%0"
 )
+
 (define_insn "save_stack_pointer"
   [(set (reg:SI STACK_POINTER_REGNUM)
 	(match_operand:SI 0 "register_operand" "r"))]
@@ -550,6 +559,28 @@
    shr\t%0, %2"
 )
 
+;; Rotate Shift Left
+(define_insn "rotlsi3"
+  [(set (match_operand:SI 0 "register_operand"            "=r,r")
+	(rotate:SI (match_operand:SI 1 "register_operand"  "0,0")
+		   (match_operand:SI 2 "nonmemory_operand" "r,M")))]
+  ""
+  "@
+   rol\t%0, %2
+   rol\t%0, %2"
+)
+
+;; Rotate Shift Right
+(define_insn "rotrsi3"
+  [(set (match_operand:SI 0 "register_operand"              "=r,r")
+	(rotatert:SI (match_operand:SI 1 "register_operand"  "0,0")
+		     (match_operand:SI 2 "nonmemory_operand" "r,M")))]
+  ""
+  "@
+   ror\t%0, %2
+   ror\t%0, %2"
+)
+
 ;;}}} 
 ;;{{{ Logical Operations 
 
@@ -562,6 +593,14 @@
   "and\t%0, %2"
 )
 
+(define_insn "*nandsi3"
+  [(set (match_operand:SI 0 "register_operand"         "=r")
+	(ior:SI (not:SI (match_operand:SI 1 "register_operand" "%0"))
+		(not:SI (match_operand:SI 2 "nonmemory_operand" "r"))))]
+  ""
+  "nand\t%0, %2"
+)
+
 ;; Inclusive OR, 32-bit integers
 (define_insn "iorsi3"
   [(set (match_operand:SI 0 "register_operand"         "=r")
@@ -571,6 +610,14 @@
   "or\t%0, %2"
 )
 
+(define_insn "*inorsi3"
+  [(set (match_operand:SI 0 "register_operand"         "=r")
+	(and:SI (not:SI (match_operand:SI 1 "register_operand" "%0"))
+		(not:SI (match_operand:SI 2 "nonmemory_operand" "r"))))]
+  ""
+  "nor\t%0, %2"
+)
+
 ;; Exclusive OR, 32-bit integers
 (define_insn "xorsi3"
   [(set (match_operand:SI 0 "register_operand"         "=r")
@@ -578,6 +625,14 @@
 		(match_operand:SI 2 "nonmemory_operand" "r")))]
   ""
   "xor\t%0, %2"
+)
+
+(define_insn "*xnorsi3"
+  [(set (match_operand:SI 0 "register_operand"         "=r")
+	(not:SI (xor:SI (match_operand:SI 1 "register_operand" "%0")
+			(match_operand:SI 2 "nonmemory_operand" "r"))))]
+  ""
+  "xnor\t%0, %2"
 )
 
 ;; Negative (Zero's comlement), 32-bit integers
@@ -594,6 +649,14 @@
 	(not:SI (match_operand:SI 1 "register_operand" "0")))]
   ""
   "not\t%0"
+)
+
+;; Byte Swap
+(define_insn "bswapsi2"
+  [(set (match_operand:SI 0 "register_operand"          "=r")
+	(bswap:SI (match_operand:SI 1 "register_operand" "0")))]
+  ""
+  "rev8\t%0"
 )
 
 ;;}}} 
@@ -756,15 +819,6 @@
     return \"movepc\trret, 8\n\tb\t%1, #al\";
 }
 ")
-
-
-(define_insn "*movpc"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(plus:SI (pc)
-		 (match_operand 1 "immediate_operand" "I")))]
-  ""
-  "movepc\t%0, %1"
-)
 
 ;; Normal unconditional jump.
 ;; For a description of the computation of the length 
