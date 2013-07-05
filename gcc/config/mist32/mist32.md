@@ -394,6 +394,22 @@
 ;;{{{ Arithmetic
 ;;{{{ Addition 
 
+(define_insn "*inc"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI (match_operand:SI 1 "register_operand" "r")
+		 (const_int 1)))]
+  ""
+  "inc\t%0, %1"
+)
+
+(define_insn "*dec_"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI (match_operand:SI 1 "register_operand" "r")
+		 (const_int -1)))]
+  ""
+  "dec\t%0, %1"
+)
+
 (define_insn "addsi3"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
 	(plus:SI (match_operand:SI 1 "register_operand" "%0,0")
@@ -404,22 +420,16 @@
    add\t%0, %2"
 )
 
-(define_insn "increment"
-  [(set (match_operand:SI 0 "register_operand"            "=r")
-	(pre_inc:SI (match_operand:SI 1 "register_operand" "r")))]
-  ""
-  "inc\t%0, %1"
-)
+;;}}}
+;;{{{ Subtraction
 
-(define_insn "decrement"
-  [(set (match_operand:SI 0 "register_operand"            "=r")
-	(pre_dec:SI (match_operand:SI 1 "register_operand" "r")))]
+(define_insn "*dec"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(minus:SI (match_operand:SI 1 "register_operand" "r")
+		  (const_int 1)))]
   ""
   "dec\t%0, %1"
 )
-
-;;}}}
-;;{{{ Subtraction 
 
 (define_insn "subsi3"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
