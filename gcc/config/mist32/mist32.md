@@ -638,25 +638,25 @@
 ;; Negative (Zero's comlement), 32-bit integers
 (define_insn "negsi2"
   [(set (match_operand:SI 0 "register_operand"        "=r")
-	(neg:SI (match_operand:SI 1 "register_operand" "0")))]
+	(neg:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "neg\t%0"
+  "neg\t%0, %1"
 )
 
 ;; One's complement (Logical Not), 32-bit integers
 (define_insn "one_cmplsi2"
   [(set (match_operand:SI 0 "register_operand"        "=r")
-	(not:SI (match_operand:SI 1 "register_operand" "0")))]
+	(not:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "not\t%0"
+  "not\t%0, %1"
 )
 
 ;; Byte Swap
 (define_insn "bswapsi2"
   [(set (match_operand:SI 0 "register_operand"          "=r")
-	(bswap:SI (match_operand:SI 1 "register_operand" "0")))]
+	(bswap:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
-  "rev8\t%0"
+  "rev8\t%0, %1"
 )
 
 ;;}}} 
