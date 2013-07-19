@@ -1,5 +1,4 @@
-;; -*- Scheme -*-
-;; Machine description of the mist32 cpu for GNU C compiler
+;; Machine description for mist32
 ;; Copyright (C) 2012 Free Software Foundation, Inc.
 ;; Contributed by Hirotaka Kawata <hirotaka@techno-st.net>
 
@@ -19,43 +18,43 @@
 ;; along with GCC; see the file COPYING3.  If not see
 ;; <http://www.gnu.org/licenses/>.
 
-;;- See file "rtl.def" for documentation on define_insn, match_*, et. al.
 
-;; UNSPEC_VOLATILE usage
-(define_constants
-  [(UNSPECV_BLOCKAGE		0)
-   (UNSPECV_FLUSH_ICACHE	1)])
+;; -------------------------------------------------------------------------
+;; mist32 specific constraints, predicates and attributes
+;; -------------------------------------------------------------------------
 
-;; UNSPEC usage
-(define_constants
-  [(UNSPEC_LOAD_SDA_BASE	2)
-   (UNSPEC_SET_CBIT		3)
-   (UNSPEC_PIC_LOAD_ADDR	4)
-   (UNSPEC_GET_PC		5)
-   (UNSPEC_GOTOFF		6)
-   ])
+(include "predicates.md")
+(include "constraints.md")
 
-;; Registers
+; mist32 instructions are 4 bytes long
+(define_attr "length" "" (const_int 4))
+
+; instruction type
+(define_attr "type"
+  "load,store,arith,fp,branch,move"
+  (const_string "arith"))
+
+;; -------------------------------------------------------------------------
+;; Define
+;; -------------------------------------------------------------------------
+
+; Registers
 (define_constants
   [(RETURN_POINTER_REGNUM	31)
    (CONDITION_CODE_REGNUM	32)
    (STACK_POINTER_REGNUM	33)]
 )
 
-;;{{{ Attributes 
+;; -------------------------------------------------------------------------
+;; nop instruction
+;; -------------------------------------------------------------------------
 
-;; Insn type.  Used to default other attribute values.
-(define_attr "type"
-  "load,store,arith,fp,branch,move"
-  (const_string "arith"))
+(define_insn "nop"
+  [(const_int 0)]
+  ""
+  "nop"
+)
 
-;; Length in bytes.
-(define_attr "length" "" (const_int 4))
-
-;;}}} 
-
-(include "predicates.md")
-(include "constraints.md")
 
 ;; Expand prologue as RTL
 (define_expand "prologue"
@@ -65,7 +64,8 @@
 {
   mist32_expand_prologue ();
   DONE;
-}")
+}
+")
 
 ;; Expand epilogue as RTL
 (define_expand "epilogue"
@@ -74,20 +74,14 @@
   "
 {
   mist32_expand_epilogue ();
-  emit_jump_insn (gen_return_normal ());
+  emit_jump_insn (gen_returner ());
   DONE;
-}")
+}
+")
 
-;;{{{ Moves 
-
-;; Move instructions.
-;;
-;; For QI and HI moves, the register must contain the full properly
-;; sign-extended value.  nonzero_bits assumes this [otherwise
-;; SHORT_IMMEDIATES_SIGN_EXTEND must be used, but the comment for it
-;; says it's a kludge and the .md files should be fixed instead].
-
-;;{{{ Push and Pop
+;; -------------------------------------------------------------------------
+;; push / pop and stack instruction
+;; -------------------------------------------------------------------------
 
 (define_insn "pushsi1"
   [(set (mem:SI (pre_dec:SI (reg:SI STACK_POINTER_REGNUM)))
@@ -114,7 +108,8 @@
   emit_insn (gen_addsi3 (tmp, tmp, operands[0]));
   emit_insn (gen_save_stack_pointer (tmp));
   DONE;
-}")
+}
+")
 
 (define_expand "sub_stack_pointer"
   [(set (reg:SI STACK_POINTER_REGNUM)
@@ -129,10 +124,14 @@
   emit_insn (gen_subsi3 (tmp, tmp, operands[0]));
   emit_insn (gen_save_stack_pointer (tmp));
   DONE;
-}")
+}
+")
 
-;;}}}
-;;{{{ 1 Byte Moves 
+;; -------------------------------------------------------------------------
+;; Move instruction
+;; -------------------------------------------------------------------------
+
+;; QI mode
 
 (define_expand "movqi"
   [(set (match_operand:QI 0 "nonimmediate_operand" "")
@@ -140,9 +139,7 @@
   ""
   "
 {
-  /* Everything except mem = const or mem = mem can be done easily.
-     Objects in the small data area are handled too.  */
-
+  /* If this is a store, force the value into a register.  */
   if (MEM_P (operands[0]))
     operands[1] = force_reg (QImode, operands[1]);
 }
@@ -173,8 +170,7 @@
    st8\t%1, %0"
 )
 
-;;}}}
-;;{{{ 2 Byte Moves 
+;; HI mode
 
 (define_expand "movhi"
   [(set (match_operand:HI 0 "nonimmediate_operand" "")
@@ -182,8 +178,7 @@
   ""
   "
 {
-  /* Everything except mem = const or mem = mem can be done easily.  */
-
+  /* If this is a store, force the value into a register.  */
   if (MEM_P (operands[0]))
     operands[1] = force_reg (HImode, operands[1]);
 }
@@ -215,8 +210,7 @@
    st16\t%1, %0"
 )
 
-;;}}}
-;;{{{ 4 Byte Moves 
+;; SI mode
 
 (define_expand "movsi"
   [(set (match_operand:SI 0 "general_operand" "")
@@ -224,10 +218,13 @@
   ""
   "
 {
-  /* Everything except mem = const or mem = mem can be done easily.  */
+  /* If this is a store, force the value into a register.  */
+  if(! (reload_in_progress || reload_completed)) {
 
   if (MEM_P (operands[0]))
     operands[1] = force_reg (SImode, operands[1]);
+
+  }
 
   if (GET_CODE(operands[1]) == MEM &&
       (GET_CODE(XEXP(operands[1], 0)) == LABEL_REF || 
@@ -293,19 +290,13 @@
 )
 
 (define_expand "movsi_split"
-  [(set (match_dup 2)
+  [(set (match_operand:SI 0 "register_operand" "")
 	(high:SI (match_operand:SI 1 "lih_wl16_operand" "")))
-   (set (match_operand:SI 0 "register_operand" "")
-	(lo_sum:SI (match_dup 2) (match_dup 1)))]
+   (set (match_dup 0)
+	(lo_sum:SI (match_dup 0) (match_dup 1)))]
   ""
-  "
-{
-  if (reload_in_progress || reload_completed)
-    operands[2] = operands[0];
-  else
-    operands[2] = gen_reg_rtx (SImode);
-}
-")
+  ""
+)
 
 (define_insn "set_hi_si"
   [(set (match_operand:SI 0 "register_operand" "=r")
@@ -352,18 +343,11 @@
    #"
 )
 
-;;}}}
-;;{{{ 8 Byte Moves
-;;}}}
-;;}}}
-;;{{{ Load & Store Multiple Registers
-;;}}}
-;;{{{ Floating Point Moves
-;;}}} 
+;; -------------------------------------------------------------------------
+;; Conversion instructions
+;; -------------------------------------------------------------------------
 
-;;{{{ Conversions 
-
-;; Unsigned conversions from a smaller integer to a larger integer
+;; Unsigned conversions
 
 (define_insn "zero_extendqisi2"
   [(set (match_operand:SI 0 "register_operand"                    "=r,r")
@@ -383,7 +367,7 @@
    ld16\t%0, %1"
 )
 
-;; Signed conversions from a smaller integer to a larger integer
+;; Signed conversions
 
 (define_insn "extendqisi2"
   [(set (match_operand:SI 0 "nonimmediate_operand"                "=r")
@@ -399,9 +383,11 @@
   "sext16\t%0, %1"
 )
 
-;;}}} 
-;;{{{ Arithmetic
-;;{{{ Addition 
+;; -------------------------------------------------------------------------
+;; Arithmetic instructions
+;; -------------------------------------------------------------------------
+
+;; Addition 
 
 (define_insn "*inc"
   [(set (match_operand:SI 0 "register_operand" "=r")
@@ -429,8 +415,7 @@
    add\t%0, %2"
 )
 
-;;}}}
-;;{{{ Subtraction
+;; Subtraction
 
 (define_insn "*dec"
   [(set (match_operand:SI 0 "register_operand" "=r")
@@ -450,8 +435,7 @@
    sub\t%0, %2"
 )
 
-;;}}}
-;;{{{ Multiplication 
+;; Multiplication 
 
 ;; Signed multiplication producing 32-bit result from 16-bit inputs
 (define_insn "mulhisi3"
@@ -475,8 +459,7 @@
    mull\t%0, %2"
 )
 
-;;}}}
-;;{{{ Division
+;; Division
 
 ;; Signed division
 (define_insn "divsi3"
@@ -522,9 +505,9 @@
    umod\t%0, %2"
 )
 
-;;}}}
-;;}}} 
-;;{{{ Shifts 
+;; -------------------------------------------------------------------------
+;; Shift operators
+;; -------------------------------------------------------------------------
 
 ;; Arithmetic Shift Left
 (define_insn "ashlsi3"
@@ -581,8 +564,9 @@
    ror\t%0, %2"
 )
 
-;;}}} 
-;;{{{ Logical Operations 
+;; -------------------------------------------------------------------------
+;; Logical operators
+;; -------------------------------------------------------------------------
 
 ;; Logical AND, 32-bit integers
 (define_insn "andsi3"
@@ -659,12 +643,13 @@
   "rev8\t%0, %1"
 )
 
-;;}}} 
-;;{{{ Comparisons 
+;; -------------------------------------------------------------------------
+;; Compare instructions
+;; -------------------------------------------------------------------------
 
-;; The actual comparisons, generated by the cbranch and/or cstore expanders
+;; The actual comparisons, generated by the cbranch
 
-(define_insn "*cmpsi_internal"
+(define_insn "*cmpsi"
   [(set (reg:CC 32)
 	(compare:CC (match_operand:SI 0 "register_operand"  "r,r")
 		    (match_operand:SI 1 "nonmemory_operand" "r,I")))]
@@ -674,11 +659,9 @@
    cmp\t%0, %1"
 )
 
-;;}}} 
-;;{{{ Branches 
-
-;; Define_expands called by the machine independent part of the compiler
-;; to allocate a new comparison register
+;; -------------------------------------------------------------------------
+;; Branch instructions
+;; -------------------------------------------------------------------------
 
 (define_expand "cbranchsi4"
   [(set (reg:CC CONDITION_CODE_REGNUM)
@@ -714,52 +697,25 @@
   "br\t%1, #%B0"
 )
 
-; evalution length attr first, check if label distance from PC.
-; after, generate branch insn using length_attr.
-;{
-;  if (get_attr_length (insn) <= 4)
-;    return "br %1, #%b0";
-;  else
-;    {
-;     operands[1] = force_reg (Pmode, operands[1]);
-;      return "br %1, #%b0";
-;    }
-;} 
-; We use 130000/260000 instead of 131072/262144 [(16 << 2) bits] 
-; to account for slot filling
-; which is complex to track and inaccurate length specs.
-;  [(set (attr "length") (if_then_else (ltu (plus (minus (match_dup 1) (pc))
-;						 (const_int 130000))
-;					   (const_int 260000))
-;				      (const_int 4)
-;				      (const_int 12)))]
+;; -------------------------------------------------------------------------
+;; Call and Jump instructions
+;; -------------------------------------------------------------------------
 
-;;}}} 
-;;{{{ Calls & Jumps 
-
-;; Subroutine call instruction returning no value.  Operand 0 is the function
-;; to call; operand 1 is the number of bytes of arguments pushed (in mode
-;; `SImode', except it is normally a `const_int'); operand 2 is the number of
-;; registers used as operands.
-
+;; Subroutine call instruction returning no value.
 (define_expand "call"
   [(parallel [(call (match_operand:SI 0 "call_operand" "")
 		    (match_operand 1 "" ""))
 	      (clobber (reg:SI RETURN_POINTER_REGNUM))])]
   ""
-  "
-{
-  if (flag_pic)
-    crtl->uses_pic_offset_table = 1;
-}
-")
+  ""
+)
 
 (define_insn "*call_reg"
   [(call (mem:SI (match_operand:SI 0 "register_operand" "r"))
 	 (match_operand 1 "" ""))
    (clobber (reg:SI RETURN_POINTER_REGNUM))]
   ""
-  "movepc\trret, 8\n\tb\t%0, #al\t; call_reg"
+  "movepc\trret, 8\n\tb\t%0, #al"
 )
 
 (define_insn "*call_label"
@@ -776,36 +732,26 @@
 }
 ")
 
-;; Subroutine call instruction returning a value.  Operand 0 is the hard
-;; register in which the value is returned.  There are three more operands, the
-;; same as the three operands of the `call' instruction (but with numbers
-;; increased by one).
-
-;; Subroutines that return `BLKmode' objects use the `call' insn.
-
+;; Subroutine call instruction returning a value.
 (define_expand "call_value"
   [(parallel [(set (match_operand 0 "register_operand"  "=r")
 		   (call (match_operand:SI 1 "call_operand" "")
 			 (match_operand 2 "" "")))
 	      (clobber (reg:SI RETURN_POINTER_REGNUM))])]
   ""
-  "
-{
-  if (flag_pic)
-    crtl->uses_pic_offset_table = 1;
-}
-")
+  ""
+)
 
-(define_insn "*call_value_internal_reg"
+(define_insn "*call_value_reg"
   [(set (match_operand 0 "register_operand"  "=r")
 	(call (mem:SI (match_operand:SI 1 "register_operand" "r"))
 	      (match_operand 2 "" "")))
    (clobber (reg:SI RETURN_POINTER_REGNUM))]
   ""
-  "movepc\trret, 8\n\tb\t%1, #al\t; call"
+  "movepc\trret, 8\n\tb\t%1, #al"
 )
 
-(define_insn "*call_value_internal_label"
+(define_insn "*call_value_label"
   [(set (match_operand 0 "register_operand"  "=r")
 	(call (mem:SI (match_operand:SI 1 "call_address_operand" ""))
 	      (match_operand 2 "" "")))
@@ -820,38 +766,21 @@
 }
 ")
 
-;; Normal unconditional jump.
-;; For a description of the computation of the length 
-;; attribute see the branch patterns above.
+;; Jump inside a function; an unconditional branch.
 (define_insn "jump"
   [(set (pc) (label_ref (match_operand 0 "" "")))]
   ""
-{
-  if (get_attr_length (insn) <= 4)
-    return "br\t%0, #al";
-  else
-    {
-      operands[0] = force_reg (Pmode, operands[0]);
-      return "br\t%0, #al";
-    }
-} 
-; We use 130000/260000 instead of 131072/262144 [(16 << 2) bits] 
-; to account for slot filling
-; which is complex to track and inaccurate length specs.
-;  [(set (attr "length") (if_then_else (ltu (plus (minus (match_dup 1) (pc))
-;						 (const_int 130000))
-;					   (const_int 260000))
-;				      (const_int 4)
-;				      (const_int 12)))]
+  "br\t%0, #al"
 )
 
-;; Indirect jump through a register
+;; Jump to an address through a register
 (define_insn "indirect_jump"
   [(set (pc) (match_operand:SI 0 "address_operand" "r"))]
   ""
   "b\t%0, #al"
 )
 
+;; return
 (define_insn "return_rret"
   [(parallel [(return) (use (reg:SI RETURN_POINTER_REGNUM))])]
   ""
@@ -864,19 +793,9 @@
   "ib"
 )
 
-(define_expand "return"
+(define_expand "returner"
   [(return)]
-  "direct_return ()"
-  "
-{
-  emit_jump_insn (gen_return_rret ());
-  DONE;
-}
-")
-
-(define_expand "return_normal"
-  [(return)]
-  "!direct_return ()"
+  "reload_completed"
   "
 {
   enum mist32_function_type fn_type;
@@ -890,47 +809,5 @@
 
   emit_jump_insn (gen_return_rret ());
   DONE;
-}")
-
-;;}}} 
-
-;; PIC
-
-/* When generating pic, we need to load the symbol offset into a register.
-   So that the optimizer does not confuse this with a normal symbol load
-   we use an unspec.  The offset will be loaded from a constant pool entry,
-   since that is the only type of relocation we can use.  */
-
-(define_insn "pic_load_addr"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-        (unspec:SI [(match_operand 1 "" "")] UNSPEC_PIC_LOAD_ADDR))]
-  "flag_pic"
-  "lil\t%0, %1"
-)
-
-(define_insn "gotoff_load_addr"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-        (unspec:SI [(match_operand 1 "" "")] UNSPEC_GOTOFF))]
-  "flag_pic"
-  "lih\t%0, hi(%1@GOTOFF)\n\twl16\t%0, lo(%1@GOTOFF)"
-  [(set_attr "length"	"8")]
-)
-
-
-;;{{{ Miscellaneous 
-
-;; No operation, needed in case the user uses -g but not -O.
-(define_insn "nop"
-  [(const_int 0)]
-  ""
-  "nop"
-)
-
-;; Pseudo instruction that prevents the scheduler from moving code above this
-;; point.
-(define_insn "blockage"
-  [(unspec_volatile [(const_int 0)] UNSPECV_BLOCKAGE)]
-  ""
-  "")
-
-;;}}} 
+}
+")

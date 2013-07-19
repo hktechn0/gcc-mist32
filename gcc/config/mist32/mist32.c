@@ -1,5 +1,5 @@
-/* Subroutines used for code generation on the mist32 cpu.
-   Copyright (C) 2012 Free Software Foundation, Inc.
+/* Target Code for mist32
+   Copyright (C) 2012, 2013 Free Software Foundation, Inc.
    Contributed by Hirotaka Kawata <hirotaka@techno-st.net>
 
    This file is part of GCC.
@@ -44,291 +44,43 @@
 #include "tm-constrs.h"
 #include "opts.h"
 
-/* Forward declaration.  */
-static void mist32_setup_incoming_varargs (CUMULATIVE_ARGS *, enum machine_mode,
-					   tree, int *, int);
-static rtx mist32_function_arg (CUMULATIVE_ARGS *, enum machine_mode,
-				const_tree, bool);
-static void mist32_function_arg_advance (CUMULATIVE_ARGS *, enum machine_mode,
-					 const_tree, bool);
+/* function value */
 
-/* The mist32 stack looks like this:
+#undef TARGET_FUNCTION_VALUE
+#define TARGET_FUNCTION_VALUE mist32_function_value
+#undef TARGET_LIBCALL_VALUE
+#define TARGET_LIBCALL_VALUE mist32_libcall_value
+#undef TARGET_FUNCTION_VALUE_REGNO_P
+#define TARGET_FUNCTION_VALUE_REGNO_P mist32_function_value_regno_p
 
-   TODO: Stack image
-*/
-
-/* Structure to be filled in by mist32_compute_frame_size() with register
-   save masks, and offsets for the current function.  */
-struct mist32_frame_info
+static rtx
+mist32_function_value (const_tree valtype,
+		       const_tree fntype_or_decli ATTRIBUTE_UNUSED,
+		       bool outgoing ATTRIBUTE_UNUSED)
 {
-  unsigned int total_size;	/* # Bytes that the entire frame takes up.  */
-  unsigned int extra_size;	/* # bytes of extra stuff.  */
-  unsigned int pretend_size;	/* # Bytes we push and pretend caller did.  */
-  unsigned int args_size;	/* # Bytes that outgoing arguments take up.  */
-  unsigned int reg_size;	/* # Bytes needed to store regs.  */
-  unsigned int var_size;	/* # Bytes that variables take up.  */
-  unsigned int frame_size;      /* # Bytes in current frame.  */
-  unsigned int gmask;		/* Mask of saved registers.  */
-  unsigned int save_fp;		/* Nonzero if frame pointer must be saved.  */
-  unsigned int save_rp;		/* Nonzero if return pointer must be saved.  */
-  int          initialized;	/* Nonzero if frame size already calculated.  */
-};
-
-/* Current frame information calculated by mist32_compute_frame_size().  */
-static struct mist32_frame_info 	current_frame_info;
-
-/* Zero structure to initialize current_frame_info.  */
-static struct mist32_frame_info 	zero_frame_info;
-
-#define FRAME_POINTER_MASK 	(1 << (FRAME_POINTER_REGNUM))
-#define RETURN_POINTER_MASK 	(1 << (RETURN_POINTER_REGNUM))
-
-/* Tell prologue and epilogue if register REGNO should be saved / restored.
-   The return address and frame pointer are treated separately.
-   Don't consider them here.  */
-#define MUST_SAVE_REGISTER(regno, interrupt_p)				\
-  (((regno) != RETURN_POINTER_REGNUM && (regno) != FRAME_POINTER_REGNUM	\
-    && (df_regs_ever_live_p (regno)					\
-	&& (!call_really_used_regs[regno] || interrupt_p)))		\
-   || (interrupt_p && regno == TMP_REGNUM)) /* FIXME: ugly hack in interrupt function */
-
-#define MUST_SAVE_FRAME_POINTER	 (df_regs_ever_live_p (FRAME_POINTER_REGNUM))
-#define MUST_SAVE_RETURN_POINTER (df_regs_ever_live_p (RETURN_POINTER_REGNUM) || crtl->profile)
-
-/* The value of TARGET_ATTRIBUTE_TABLE.  */
-static const struct attribute_spec mist32_attribute_table[] = {
-  /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler } */
-  { "interrupt", 0, 0, true,  false, false, NULL },
-  { NULL,        0, 0, false, false, false, NULL }
-};
-
-/* Initialize the GCC target structure.  */
-#undef  TARGET_ATTRIBUTE_TABLE
-#define TARGET_ATTRIBUTE_TABLE mist32_attribute_table
-
-
-/* True if X is a reg that can be used as a base reg.  */
-static bool
-mist32_rtx_ok_for_base_p (const_rtx x, bool strict)
-{
-  if (! REG_P (x))
-    return false;
-  
-  if (strict)
-    {
-      if (GPR_P (x))
-	return true;
-    }
-  else
-    {
-      if (GPR_P (x)
-	  || REGNO (x) == ARG_POINTER_REGNUM
-	  || ! HARD_REGISTER_P (x))
-	return true;
-    }
-
-  return false;
-}
-
-/* Is this a load and increment operation.  */
-static inline bool
-mist32_load_postinc_p (enum machine_mode mode, const_rtx x, bool strict)
-{
-  if ((mode == SImode || mode == SFmode)
-      && GET_CODE (x) == POST_INC
-      && REG_P (XEXP (x, 0))
-      && mist32_rtx_ok_for_base_p (XEXP (x, 0), strict))
-    return true;
-
-  return false;
-}
-
-/* Is this an increment/decrement and store operation.  */
-static inline bool
-mist32_store_preinc_predec_p (enum machine_mode mode, const_rtx x, bool strict)
-{
-  if ((mode == SImode || mode == SFmode)
-      && (GET_CODE (x) == PRE_INC || GET_CODE (x) == PRE_DEC)
-      && REG_P (XEXP (x, 0))                           \
-      && mist32_rtx_ok_for_base_p (XEXP (x, 0), strict))
-    return true;
-
-  return false;
-}
-
-static bool
-mist32_legitimate_address_p (enum machine_mode mode, rtx x, bool strict)
-{
-  if (mist32_rtx_ok_for_base_p (x, strict)
-      || mist32_load_postinc_p (mode, x, strict)
-      || mist32_store_preinc_predec_p (mode, x, strict))
-    return true;
-
-  return false;
-}
-
-int
-mist32_legitimate_pic_operand_p (rtx x)
-{
-  if (GET_CODE (x) == SYMBOL_REF || GET_CODE (x) == LABEL_REF)
-    return 0;
-
-  if (GET_CODE (x) == CONST
-      && GET_CODE (XEXP (x, 0)) == PLUS
-      && (GET_CODE (XEXP (XEXP (x, 0), 0)) == SYMBOL_REF
-          || GET_CODE (XEXP (XEXP (x, 0), 0)) == LABEL_REF)
-      && (CONST_INT_P (XEXP (XEXP (x, 0), 1))))
-    return 0;
-
-  return 1;
-}
-
-rtx
-mist32_legitimize_pic_address (rtx orig, rtx reg)
-{
-#ifdef DEBUG_PIC
-  printf("mist32_legitimize_pic_address()\n");
-#endif
-
-  if (GET_CODE (orig) == SYMBOL_REF || GET_CODE (orig) == LABEL_REF)
-    {
-      rtx pic_ref, address;
-      int subregs = 0;
-
-      if (reg == 0)
-        {
-          gcc_assert (!reload_in_progress && !reload_completed);
-	  reg = gen_reg_rtx (Pmode);
-
-          subregs = 1;
-        }
-
-      if (subregs)
-        address = gen_reg_rtx (Pmode);
-      else
-        address = reg;
-
-      crtl->uses_pic_offset_table = 1;
-
-      if (GET_CODE (orig) == LABEL_REF
-          || (GET_CODE (orig) == SYMBOL_REF && SYMBOL_REF_LOCAL_P (orig)))
-        {
-          emit_insn (gen_gotoff_load_addr (reg, orig));
-          emit_insn (gen_addsi3 (reg, reg, pic_offset_table_rtx));
-          return reg;
-        }
-
-      emit_insn (gen_pic_load_addr (address, orig));
-
-      emit_insn (gen_addsi3 (address, address, pic_offset_table_rtx));
-      pic_ref = gen_const_mem (Pmode, address);
-      emit_move_insn (reg, pic_ref);
-      return reg;
-    }
-  else if (GET_CODE (orig) == CONST)
-    {
-      rtx base, offset;
-
-      if (GET_CODE (XEXP (orig, 0)) == PLUS
-          && XEXP (XEXP (orig, 0), 1) == pic_offset_table_rtx)
-        return orig;
-
-      if (reg == 0)
-        {
-          gcc_assert (!reload_in_progress && !reload_completed);
-	  reg = gen_reg_rtx (Pmode);
-        }
-
-      if (GET_CODE (XEXP (orig, 0)) == PLUS)
-        {
-          base = mist32_legitimize_pic_address (XEXP (XEXP (orig, 0), 0), reg);
-          if (base == reg)
-            offset = mist32_legitimize_pic_address (XEXP (XEXP (orig, 0), 1), NULL_RTX);
-          else
-            offset = mist32_legitimize_pic_address (XEXP (XEXP (orig, 0), 1), reg);
-        }
-      else
-        return orig;
-
-      if (CONST_INT_P (offset))
-        {
-          if (INT16_P (INTVAL (offset)))
-            return plus_constant (base, INTVAL (offset));
-          else
-	    {
-	      gcc_assert (! reload_in_progress && ! reload_completed);
-	      offset = force_reg (Pmode, offset);
-	    }
-        }
-
-      return gen_rtx_PLUS (Pmode, base, offset);
-    }
-
-  return orig;
+  return gen_rtx_REG (TYPE_MODE (valtype), GP_RETURN);
 }
 
 static rtx
-mist32_legitimize_address (rtx x, rtx orig_x ATTRIBUTE_UNUSED,
-			   enum machine_mode mode ATTRIBUTE_UNUSED)
+mist32_libcall_value (enum machine_mode mode,
+		      const_rtx fun ATTRIBUTE_UNUSED)
 {
-  if (flag_pic)
-    return mist32_legitimize_pic_address (x, NULL_RTX);
-  else
-    return x;
+  return gen_rtx_REG (mode, GP_RETURN);
 }
-
-/* Implement TARGET_LEGITIMATE_CONSTANT_P
-
-   We don't allow (plus symbol large-constant) as the relocations can't
-   describe it.  INTVAL > 0x3ff handles both 16-bit and 24-bit relocations.
-   We allow all CONST_DOUBLE's as the md file patterns will force the
-   constant to memory if they can't handle them.  
 
 static bool
-mist32_legitimate_constant_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx x)
+mist32_function_value_regno_p (const unsigned int regno)
 {
-  return !(GET_CODE (x) == CONST
-	   && GET_CODE (XEXP (x, 0)) == PLUS
-	   && (GET_CODE (XEXP (XEXP (x, 0), 0)) == SYMBOL_REF
-	       || GET_CODE (XEXP (XEXP (x, 0), 0)) == LABEL_REF)
-	   && CONST_INT_P (XEXP (XEXP (x, 0), 1))
-	   && UINTVAL (XEXP (XEXP (x, 0), 1)) > 0x3ff);
-}
-*/
-
-/* Worker function for TARGET_MODE_DEPENDENT_ADDRESS_P.  */
-
-static bool
-mist32_mode_dependent_address_p (const_rtx addr)
-{
-  return false;
+  return (regno == GP_RETURN);
 }
 
-#undef TARGET_LEGITIMATE_ADDRESS_P
-#define TARGET_LEGITIMATE_ADDRESS_P mist32_legitimate_address_p
-#undef TARGET_LEGITIMIZE_ADDRESS
-#define TARGET_LEGITIMIZE_ADDRESS mist32_legitimize_address
-#undef TARGET_MODE_DEPENDENT_ADDRESS_P
-#define TARGET_MODE_DEPENDENT_ADDRESS_P mist32_mode_dependent_address_p
 
-/*
-#undef TARGET_LEGITIMATE_CONSTANT_P
-#define TARGET_LEGITIMATE_CONSTANT_P mist32_legitimate_constant_p
-*/
-
-#undef  TARGET_ASM_ALIGNED_HI_OP
-#define TARGET_ASM_ALIGNED_HI_OP "\t.word\t"
-#undef  TARGET_ASM_ALIGNED_SI_OP
-#define TARGET_ASM_ALIGNED_SI_OP "\t.long\t"
+/* print operand */
 
 #undef  TARGET_PRINT_OPERAND
 #define TARGET_PRINT_OPERAND mist32_print_operand
 #undef  TARGET_PRINT_OPERAND_ADDRESS
 #define TARGET_PRINT_OPERAND_ADDRESS mist32_print_operand_address
-/*#undef  TARGET_PRINT_OPERAND_PUNCT_VALID_P
-  #define TARGET_PRINT_OPERAND_PUNCT_VALID_P m32r_print_operand_punct_valid_p*/
-
-/* Implement TARGET_PRINT_OPERAND. */
 
 void
 mist32_print_operand (FILE *file, rtx x, int code)
@@ -387,7 +139,6 @@ mist32_print_operand (FILE *file, rtx x, int code)
 	  HOST_WIDE_INT val;
 	  
 	  val = INTVAL (x);
-
 	  val &= 0xff;
 
 	  fprintf (file, HOST_WIDE_INT_PRINT_DEC, val);
@@ -476,8 +227,6 @@ mist32_print_operand (FILE *file, rtx x, int code)
   return;
 }
 
-/* Implement TARGET_PRINT_OPERAND_ADDRESS.  */
-
 void
 mist32_print_operand_address (FILE *stream, rtx address)
 {
@@ -494,29 +243,48 @@ mist32_print_operand_address (FILE *stream, rtx address)
       break;
     }
 }
-
 
-#undef  TARGET_ASM_FUNCTION_PROLOGUE
-#define TARGET_ASM_FUNCTION_PROLOGUE mist32_output_function_prologue
-#undef  TARGET_ASM_FUNCTION_EPILOGUE
-#define TARGET_ASM_FUNCTION_EPILOGUE mist32_output_function_epilogue
+
+#undef TARGET_LEGITIMATE_ADDRESS_P
+#define TARGET_LEGITIMATE_ADDRESS_P mist32_legitimate_address_p
+/*
+#undef TARGET_LEGITIMATE_CONSTANT_P
+#define TARGET_LEGITIMATE_CONSTANT_P mist32_legitimate_constant_p
+*/
+
+static bool
+mist32_legitimate_address_p (enum machine_mode mode, rtx x, bool strict)
+{
+  if (! REG_P (x))
+    return false;
+  
+  if (strict)
+    {
+      if (GPR_P (x))
+	return true;
+    }
+  else
+    {
+      if (GPR_P (x)
+	  || REGNO (x) == ARG_POINTER_REGNUM
+	  || ! HARD_REGISTER_P (x))
+	return true;
+    }
+
+  return false;
+}
 
 /*
-#undef  TARGET_ASM_FILE_START
-#define TARGET_ASM_FILE_START m32r_file_start
-
-#undef  TARGET_SCHED_ADJUST_PRIORITY
-#define TARGET_SCHED_ADJUST_PRIORITY m32r_adjust_priority
-#undef  TARGET_SCHED_ISSUE_RATE
-#define TARGET_SCHED_ISSUE_RATE m32r_issue_rate
-
-#undef  TARGET_OPTION_OVERRIDE
-#define TARGET_OPTION_OVERRIDE m32r_option_override
-
-#undef  TARGET_ENCODE_SECTION_INFO
-#define TARGET_ENCODE_SECTION_INFO m32r_encode_section_info
-#undef  TARGET_IN_SMALL_DATA_P
-#define TARGET_IN_SMALL_DATA_P m32r_in_small_data_p
+static bool
+mist32_legitimate_constant_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx x)
+{
+  return !(GET_CODE (x) == CONST
+	   && GET_CODE (XEXP (x, 0)) == PLUS
+	   && (GET_CODE (XEXP (XEXP (x, 0), 0)) == SYMBOL_REF
+	       || GET_CODE (XEXP (XEXP (x, 0), 0)) == LABEL_REF)
+	   && CONST_INT_P (XEXP (XEXP (x, 0), 1))
+	   && UINTVAL (XEXP (XEXP (x, 0), 1)) > 0x3ff);
+}
 */
 
 /*
@@ -531,42 +299,90 @@ mist32_print_operand_address (FILE *stream, rtx address)
 #define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_true
 #undef  TARGET_RETURN_IN_MEMORY
 #define TARGET_RETURN_IN_MEMORY m32r_return_in_memory
+
+#undef TARGET_CONDITIONAL_REGISTER_USAGE
+#define TARGET_CONDITIONAL_REGISTER_USAGE mist32_conditional_register_usage
 */
 
-#undef TARGET_FUNCTION_VALUE
-#define TARGET_FUNCTION_VALUE mist32_function_value
-#undef TARGET_LIBCALL_VALUE
-#define TARGET_LIBCALL_VALUE mist32_libcall_value
-#undef TARGET_FUNCTION_VALUE_REGNO_P
-#define TARGET_FUNCTION_VALUE_REGNO_P mist32_function_value_regno_p
 
-/* Implements TARGET_FUNCTION_VALUE.  */
 
-static rtx
-mist32_function_value (const_tree valtype,
-		     const_tree fntype_or_decli ATTRIBUTE_UNUSED,
-		     bool outgoing ATTRIBUTE_UNUSED)
+/* Structure to be filled in by mist32_compute_frame_size() with register
+   save masks, and offsets for the current function.  */
+struct mist32_frame_info
 {
-  return gen_rtx_REG (TYPE_MODE (valtype), GP_RETURN);
-}
+  unsigned int total_size;	/* # Bytes that the entire frame takes up.  */
+  unsigned int extra_size;	/* # bytes of extra stuff.  */
+  unsigned int pretend_size;	/* # Bytes we push and pretend caller did.  */
+  unsigned int args_size;	/* # Bytes that outgoing arguments take up.  */
+  unsigned int reg_size;	/* # Bytes needed to store regs.  */
+  unsigned int var_size;	/* # Bytes that variables take up.  */
+  unsigned int frame_size;      /* # Bytes in current frame.  */
+  unsigned int gmask;		/* Mask of saved registers.  */
+  unsigned int save_fp;		/* Nonzero if frame pointer must be saved.  */
+  unsigned int save_rp;		/* Nonzero if return pointer must be saved.  */
+  int          initialized;	/* Nonzero if frame size already calculated.  */
+};
 
-/* Implements TARGET_LIBCALL_VALUE.  */
+/* Current frame information calculated by mist32_compute_frame_size().  */
+static struct mist32_frame_info 	current_frame_info;
 
-static rtx
-mist32_libcall_value (enum machine_mode mode,
-		    const_rtx fun ATTRIBUTE_UNUSED)
-{
-  return gen_rtx_REG (mode, GP_RETURN);
-}
+/* Zero structure to initialize current_frame_info.  */
+static struct mist32_frame_info 	zero_frame_info;
 
-/* Implements TARGET_FUNCTION_VALUE_REGNO_P.  */
+#define FRAME_POINTER_MASK 	(1 << (FRAME_POINTER_REGNUM))
+#define RETURN_POINTER_MASK 	(1 << (RETURN_POINTER_REGNUM))
 
-static bool
-mist32_function_value_regno_p (const unsigned int regno)
-{
-  return (regno == GP_RETURN);
-}
+/* Tell prologue and epilogue if register REGNO should be saved / restored.
+   The return address and frame pointer are treated separately.
+   Don't consider them here.  */
+#define MUST_SAVE_REGISTER(regno, interrupt_p)				\
+  ((regno) != RETURN_POINTER_REGNUM && (regno) != FRAME_POINTER_REGNUM	\
+   && ((df_regs_ever_live_p (regno) && !call_really_used_regs[regno])	\
+       || (interrupt_p && call_really_used_regs[regno])))
 
+#define MUST_SAVE_FRAME_POINTER	 (df_regs_ever_live_p (FRAME_POINTER_REGNUM))
+#define MUST_SAVE_RETURN_POINTER (df_regs_ever_live_p (RETURN_POINTER_REGNUM) || crtl->profile)
+
+/* The value of TARGET_ATTRIBUTE_TABLE.  */
+static const struct attribute_spec mist32_attribute_table[] = {
+  /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler } */
+  { "interrupt", 0, 0, true,  false, false, NULL },
+  { NULL,        0, 0, false, false, false, NULL }
+};
+
+/* Initialize the GCC target structure.  */
+#undef  TARGET_ATTRIBUTE_TABLE
+#define TARGET_ATTRIBUTE_TABLE mist32_attribute_table
+
+/* The ROUND_ADVANCE* macros are local to this file.  */
+/* Round SIZE up to a word boundary.  */
+#define ROUND_ADVANCE(SIZE)				\
+  (((SIZE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
+
+/* Round arg MODE/TYPE up to the next word boundary.  */
+#define ROUND_ADVANCE_ARG(MODE, TYPE)				\
+  ((MODE) == BLKmode						\
+   ? ROUND_ADVANCE ((unsigned int) int_size_in_bytes (TYPE))	\
+   : ROUND_ADVANCE ((unsigned int) GET_MODE_SIZE (MODE)))
+
+/* Round CUM up to the necessary point for argument MODE/TYPE.  */
+#define ROUND_ADVANCE_CUM(CUM, MODE, TYPE) (CUM)
+
+/* Return boolean indicating arg of type TYPE and mode MODE will be passed in
+   a reg.  This includes arguments that have to be passed by reference as the
+   pointer to them is passed in a reg if one is available (and that is what
+   we're given).
+   This macro is only used in this file.  */
+#define PASS_IN_REG_P(CUM, MODE, TYPE) \
+  (ROUND_ADVANCE_CUM ((CUM), (MODE), (TYPE)) < MAX_ARGS_IN_REGISTERS)
+
+/* Forward declaration.  */
+static void mist32_setup_incoming_varargs (CUMULATIVE_ARGS *, enum machine_mode,
+					   tree, int *, int);
+static rtx mist32_function_arg (CUMULATIVE_ARGS *, enum machine_mode,
+				const_tree, bool);
+static void mist32_function_arg_advance (CUMULATIVE_ARGS *, enum machine_mode,
+					 const_tree, bool);
 
 #undef  TARGET_SETUP_INCOMING_VARARGS
 #define TARGET_SETUP_INCOMING_VARARGS mist32_setup_incoming_varargs
@@ -620,35 +436,6 @@ mist32_arg_partial_bytes (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 
   return words * UNITS_PER_WORD;
 }
-
-/* The ROUND_ADVANCE* macros are local to this file.  */
-/* Round SIZE up to a word boundary.  */
-#define ROUND_ADVANCE(SIZE)				\
-  (((SIZE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
-
-/* Round arg MODE/TYPE up to the next word boundary.  */
-#define ROUND_ADVANCE_ARG(MODE, TYPE)				\
-  ((MODE) == BLKmode						\
-   ? ROUND_ADVANCE ((unsigned int) int_size_in_bytes (TYPE))	\
-   : ROUND_ADVANCE ((unsigned int) GET_MODE_SIZE (MODE)))
-
-/* Round CUM up to the necessary point for argument MODE/TYPE.  */
-#define ROUND_ADVANCE_CUM(CUM, MODE, TYPE) (CUM)
-
-/* Return boolean indicating arg of type TYPE and mode MODE will be passed in
-   a reg.  This includes arguments that have to be passed by reference as the
-   pointer to them is passed in a reg if one is available (and that is what
-   we're given).
-   This macro is only used in this file.  */
-#define PASS_IN_REG_P(CUM, MODE, TYPE) \
-  (ROUND_ADVANCE_CUM ((CUM), (MODE), (TYPE)) < MAX_ARGS_IN_REGISTERS)
-
-/* Do any needed setup for a variadic function.  For the mist32, we must
-   create a register parameter block, and then copy any anonymous arguments
-   in registers to memory.
-
-   CUM has not been updated for the last named argument which has type TYPE
-   and mode MODE, and we rely on this fact.  */
 
 static void
 mist32_setup_incoming_varargs (CUMULATIVE_ARGS *cum, enum machine_mode mode,
@@ -714,9 +501,6 @@ mist32_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
 bool
 mist32_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
 {
-  /*
-  return (to == HARD_FRAME_POINTER_REGNUM || to == FRAME_POINTER_REGNUM);
-  */
   return (from == ARG_POINTER_REGNUM && to == STACK_POINTER_REGNUM
           ? ! frame_pointer_needed
           : true);
@@ -747,7 +531,7 @@ mist32_compute_function_type (tree decl)
     return fn_type;
 
   /* Compute function type.  */
- fn_type = (lookup_attribute ("interrupt", DECL_ATTRIBUTES (current_function_decl)) != NULL_TREE
+  fn_type = (lookup_attribute ("interrupt", DECL_ATTRIBUTES (current_function_decl)) != NULL_TREE
 	     ? MIST32_FUNCTION_INTERRUPT
 	     : MIST32_FUNCTION_NORMAL);
 
@@ -818,6 +602,11 @@ mist32_compute_frame_size (int size)	/* # of var. bytes allocated.  */
   return total_size;
 }
 
+#undef  TARGET_ASM_FUNCTION_PROLOGUE
+#define TARGET_ASM_FUNCTION_PROLOGUE mist32_output_function_prologue
+#undef  TARGET_ASM_FUNCTION_EPILOGUE
+#define TARGET_ASM_FUNCTION_EPILOGUE mist32_output_function_epilogue
+
 /* Expand the mist32 prologue as a series of insns.  */
 
 void
@@ -882,14 +671,13 @@ mist32_expand_prologue (void)
     emit_insn (gen_movsi (frame_pointer_rtx, stack_pointer_rtx));
 
   if (crtl->profile)
-    /* Push lr for mcount (form_pc, x).  */
+    /* Push rret for mcount (form_pc, x).  */
     emit_insn (gen_pushsi1 (gen_rtx_REG (Pmode, RETURN_POINTER_REGNUM)));
 
   if (crtl->profile)
     emit_insn (gen_blockage ());
 }
 
-
 /* Set up the stack and frame pointer (if desired) for the function.
    Note, if this is changed, you need to mirror the changes in
    mist32_compute_frame_size which calculates the prolog size.  */
@@ -915,7 +703,7 @@ mist32_output_function_prologue (FILE * file, HOST_WIDE_INT size)
 	   current_frame_info.args_size,
 	   current_frame_info.extra_size);
 }
-
+
 /* Expand the mist32 epilogue as a series of insns.  */
 
 void
@@ -994,11 +782,12 @@ mist32_expand_epilogue (void)
       if (current_frame_info.save_rp)
 	emit_insn (gen_popsi1 (gen_rtx_REG (Pmode, RETURN_POINTER_REGNUM)));
 
-      /* Restore any saved registers, in reverse order of course.  */
       gmask &= ~(FRAME_POINTER_MASK | RETURN_POINTER_MASK);
+
+      /* Restore any saved registers, in reverse order of course.  */
       for (regno = GP_REG_LAST; regno >= 0; --regno)
 	{
-	  if ((gmask & (1L << regno)) != 0)
+	  if ((gmask & (1 << regno)) != 0)
 	    emit_insn (gen_popsi1 (gen_rtx_REG (Pmode, regno)));
 	}
 
@@ -1023,30 +812,11 @@ mist32_output_function_epilogue (FILE * file,
   /* This is only for the human reader.  */
   fprintf (file, "\t%s EPILOGUE\n", ASM_COMMENT_START);
 
-
   /* Reset state info for each function.  */
   current_frame_info = zero_frame_info;
   mist32_compute_function_type (NULL_TREE);
 }
 
-/* Return nonzero if this function is known to have a null or 1 instruction
-   epilogue.  */
-
-int
-direct_return (void)
-{
-  if (!reload_completed)
-    return FALSE;
-
-  if (MIST32_INTERRUPT_P (mist32_compute_function_type (current_function_decl)))
-    return FALSE;
-
-  if (! current_frame_info.initialized)
-    mist32_compute_frame_size (get_frame_size ());
-
-  return current_frame_info.total_size == 0;
-}
-
 rtx
 mist32_return_addr (int count)
 {
@@ -1056,8 +826,12 @@ mist32_return_addr (int count)
   return get_hard_reg_initial_val (Pmode, RETURN_POINTER_REGNUM);
 }
 
-/*#undef TARGET_CONDITIONAL_REGISTER_USAGE
-  #define TARGET_CONDITIONAL_REGISTER_USAGE mist32_conditional_register_usage*/
+#undef  TARGET_ASM_ALIGNED_HI_OP
+#define TARGET_ASM_ALIGNED_HI_OP "\t.word\t"
+#undef  TARGET_ASM_ALIGNED_SI_OP
+#define TARGET_ASM_ALIGNED_SI_OP "\t.long\t"
+
+/* Trampoline */
 
 #undef TARGET_ASM_TRAMPOLINE_TEMPLATE
 #define TARGET_ASM_TRAMPOLINE_TEMPLATE mist32_asm_trampoline_template
