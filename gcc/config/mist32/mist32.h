@@ -204,25 +204,25 @@
 */
 #define FIRST_PSEUDO_REGISTER 35
 
-#define FIXED_REGISTERS							\
-{									\
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,			\
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,			\
-  1, 1, 1								\
+#define FIXED_REGISTERS					\
+{							\
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,	\
+  1, 1, 1						\
 }
 
-#define CALL_USED_REGISTERS						\
-{									\
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,			\
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,			\
-  1, 1, 1								\
+#define CALL_USED_REGISTERS				\
+{							\
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,	\
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,	\
+  1, 1, 1						\
 }
 
-#define CALL_REALLY_USED_REGISTERS                                      \
-{                                                                       \
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,                       \
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,			\
-  1, 1, 1								\
+#define CALL_REALLY_USED_REGISTERS			\
+{							\
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,	\
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,	\
+  1, 1, 1						\
 }
 
 /* Internal macros to classify a register number as to whether it's a
@@ -232,10 +232,12 @@
 #define GP_REG_LAST  31
 #define GP_REG_NUM   (GP_REG_LAST - GP_REG_FIRST + 1)
 
-/*#define FP_REG_FIRST 32
+/*
+#define FP_REG_FIRST 32
 #define FP_REG_LAST  63
 #define FP_REG_NUM   (FP_REG_LAST - FP_REG_FIRST + 1)
-#define FP_DBX_FIRST ((write_symbols == DBX_DEBUG) ? 38 : 32)*/
+#define FP_DBX_FIRST ((write_symbols == DBX_DEBUG) ? 38 : 32)
+*/
 
 #define TMP_REGNUM	(GP_REG_FIRST + 29)
 #define PROLOGUE_TMP_REGNUM	(GP_REG_FIRST + 1)
@@ -260,13 +262,6 @@
    registers on the FR30.  */
 #define CONDITION_CODE_REGNUM 32
 #define RETURN_POINTER_REGNUM 31
-
-/* These aren't official macros.  */
-/*
-#define RETURN_ADDR_REGNUM  14
-#define CARRY_REGNUM        17
-#define ACCUM_REGNUM        18
-*/
 
 #define GPR_P(REGNO)   (IN_RANGE_P ((REGNO), GP_REG_FIRST, GP_REG_LAST))
 
@@ -355,16 +350,16 @@ enum reg_class
 
 /* We generally want to put call-clobbered registers ahead of
    call-saved ones.  (IRA expects this.)  */
-#define REG_ALLOC_ORDER							\
-{                                                                 	\
-  /* Call-clobbered GPRs.  */						\
-  0, 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,		\
-  /* Call-saved GPRs.  */						\
-  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,			\
-  /* Other.  */								\
-  28, 29, 30, 31,							\
-  /* cc, Stack pointer, arg pointer  */ 				\
-  32, 33, 34								\
+#define REG_ALLOC_ORDER						\
+{								\
+  /* Call-clobbered GPRs.  */					\
+  15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,		\
+  /* Call-saved GPRs.  */					\
+  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,		\
+  /* Other.  */							\
+  28, 29, 30, 31,						\
+  /* cc, Stack pointer, arg pointer  */ 			\
+  32, 33, 34							\
 }
 
 /* Return the maximum number of consecutive registers
@@ -380,7 +375,6 @@ enum reg_class
 /* Some range macros.  */
 #define INT16_P(X)     ((X) >= - 0x8000 && (X) <= 0x7fff)
 
-
 /* Stack layout; function entry, exit and calling.  */
 #define STACK_GROWS_DOWNWARD
 #define FRAME_GROWS_DOWNWARD flag_stack_protect
@@ -707,10 +701,6 @@ enum reg_class
    the trampoline is also aligned on a 32bit boundary.  */
 #define TRAMPOLINE_ALIGNMENT 32
 
-/*
-#define RETURN_ADDR_RTX(COUNT, FRAME) mist32_return_addr (COUNT)
-*/
-
 #define INCOMING_RETURN_ADDR_RTX   gen_rtx_REG (Pmode, RETURN_POINTER_REGNUM)
 
 #define MASK_RETURN_ADDR GEN_INT (-3)
@@ -720,20 +710,12 @@ enum reg_class
 /* Maximum number of registers that can appear in a valid memory address.  */
 #define MAX_REGS_PER_ADDRESS 1
 
-/* We have post-inc load and pre-dec,pre-inc store,
-   but only for 4 byte vals.  
-#define HAVE_PRE_DECREMENT  1
-#define HAVE_PRE_INCREMENT  1
-#define HAVE_POST_INCREMENT 1
-*/
-
 /* Recognize any constant value that is a valid address.  */
-#define CONSTANT_ADDRESS_P(X)   \
-  (    GET_CODE (X) == LABEL_REF  \
-   ||  GET_CODE (X) == SYMBOL_REF \
-   ||  CONST_INT_P (X)  \
-   || (GET_CODE (X) == CONST      \
-       && ! (flag_pic && ! mist32_legitimate_pic_operand_p (X))))
+#define CONSTANT_ADDRESS_P(X)		\
+  (GET_CODE (X) == LABEL_REF		\
+   || GET_CODE (X) == SYMBOL_REF	\
+   || CONST_INT_P (X)			\
+   || GET_CODE (X) == CONST)
 
 /* Nonzero if the constant value X is a legitimate general operand.
    We don't allow (plus symbol large-constant) as the relocations can't
