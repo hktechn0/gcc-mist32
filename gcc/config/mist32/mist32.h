@@ -206,22 +206,22 @@
 
 #define FIXED_REGISTERS					\
 {							\
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	\
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,	\
   1, 1, 1						\
 }
 
 #define CALL_USED_REGISTERS				\
 {							\
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,	\
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0,	\
+  1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,	\
   1, 1, 1						\
 }
 
 #define CALL_REALLY_USED_REGISTERS			\
 {							\
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,	\
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,	\
+  1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,	\
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	\
   1, 1, 1						\
 }
 
@@ -239,8 +239,8 @@
 #define FP_DBX_FIRST ((write_symbols == DBX_DEBUG) ? 38 : 32)
 */
 
-#define TMP_REGNUM	(GP_REG_FIRST + 29)
-#define PROLOGUE_TMP_REGNUM	(GP_REG_FIRST + 1)
+#define TMP_REGNUM	(GP_REG_FIRST + 7)
+#define PROLOGUE_TMP_REGNUM	(GP_REG_FIRST + 0)
 
 /* Define this macro if it is as good or better to call a constant
    function address than to call an address kept in a register.  */
@@ -353,11 +353,14 @@ enum reg_class
 #define REG_ALLOC_ORDER						\
 {								\
   /* Call-clobbered GPRs.  */					\
-  15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,		\
+  7, 0, 1, 2, 3, 4, 5, 6,					\
+  /* Return pointer  */						\
+  31,								\
   /* Call-saved GPRs.  */					\
-  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,		\
-  /* Other.  */							\
-  28, 29, 30, 31,						\
+  8, 9, 10, 11, 12, 13, 14, 15,					\
+  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,		\
+  /* global pointer, base pointer */				\
+  29, 30,							\
   /* cc, Stack pointer, arg pointer  */ 			\
   32, 33, 34							\
 }
@@ -455,7 +458,7 @@ enum reg_class
 /* Symbolic macros for the registers used to return integer and floating
    point values.  */
 #define GP_RETURN (GP_REG_FIRST + 0)
-#define MAX_ARGS_IN_REGISTERS 15
+#define MAX_ARGS_IN_REGISTERS 6
 
 /* Symbolic macros for the first/last argument registers.  */
 #define GP_ARG_FIRST (GP_REG_FIRST + 1)
@@ -546,17 +549,17 @@ enum reg_class
 
 /* Control the assembler format that we output.  */
 #define REGISTER_NAMES							\
-{ "r0",   "r1",   "r2",   "r3",   "r4",     "r5",   "r6",    "r7",	\
+{ "r0",   "r1",   "r2",   "r3",   "r4",     "r5",   "r6",   "rtmp",	\
   "r8",   "r9",   "r10",  "r11",  "r12",    "r13",  "r14",   "r15",	\
   "r16",  "r17",  "r18",  "r19",  "r20",    "r21",  "r22",   "r23",	\
-  "r24",  "r25",  "r26",  "r27",  "rglobl", "rtmp", "rbase", "rret",	\
+  "r24",  "r25",  "r26",  "r27",  "r28", "rglobl", "rbase", "rret",	\
   "cc",   "stack", "arg"						\
 }
 
 /* List the "software" names for each register. */
 #define ADDITIONAL_REGISTER_NAMES					\
 {									\
-  { "r28",	28 + GP_REG_FIRST },					\
+  { "r7",	 7 + GP_REG_FIRST },					\
   { "r29",	29 + GP_REG_FIRST },					\
   { "r30",	30 + GP_REG_FIRST },					\
   { "r31",	31 + GP_REG_FIRST }					\
