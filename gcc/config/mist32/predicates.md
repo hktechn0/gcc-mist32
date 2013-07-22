@@ -47,10 +47,12 @@
 {
   if (!CONST_INT_P (op))
     return 0;
+
   if (satisfies_constraint_J (op)
       || satisfies_constraint_K (op)
       || satisfies_constraint_L (op))
     return 0;
+
   return 1;
 })
 
@@ -83,13 +85,15 @@
   if (two_insn_const_operand (op, mode))
     return 1;
 
-/*
-  if (GET_CODE (op) == CONST
-      && GET_CODE (XEXP (op, 0)) == PLUS
-      && GET_CODE (XEXP (XEXP (op, 0), 0)) == SYMBOL_REF
-      && satisfies_constraint_J (XEXP (XEXP (op, 0), 1)))
-    return 1;
-*/
+  return 0;
+})
 
+; mist32 O2/I11 operand
+
+(define_predicate "o2_i11_operand"
+  (match_code "reg,const_int")
+{
+  if (GET_CODE (op) == REG || satisfies_constraint_I (op))
+    return 1;
   return 0;
 })
