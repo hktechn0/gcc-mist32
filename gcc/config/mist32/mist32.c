@@ -630,7 +630,7 @@ mist32_expand_prologue (void)
       /* Use a HOST_WIDE_INT temporary, since negating an unsigned int gives
 	 the wrong result on a 64-bit host.  */
       HOST_WIDE_INT pretend_size = current_frame_info.pretend_size;
-      emit_insn (gen_add_stack_pointer (GEN_INT (-pretend_size)));
+      emit_insn (gen_sub_stack_pointer (GEN_INT (pretend_size)));
     }
 
   /* Save any registers we need to and set up fp.  */
@@ -657,15 +657,8 @@ mist32_expand_prologue (void)
 
   if (frame_size == 0)
     ; /* Nothing to do.  */
-  else if (frame_size <= 0x3ff)
-      emit_insn (gen_add_stack_pointer (GEN_INT (-frame_size)));
   else
-    {
-      rtx tmp = gen_rtx_REG (Pmode, PROLOGUE_TMP_REGNUM);
-
-      emit_insn (gen_movsi (tmp, GEN_INT (frame_size)));
-      emit_insn (gen_sub_stack_pointer (tmp));
-    }
+      emit_insn (gen_sub_stack_pointer (GEN_INT (frame_size)));
 
   if (frame_pointer_needed)
     emit_insn (gen_movsi (frame_pointer_rtx, stack_pointer_rtx));
@@ -746,15 +739,8 @@ mist32_expand_epilogue (void)
 
 	  if (reg_offset == 0)
 	    ; /* Nothing to do.  */
-	  else if (reg_offset <= 0x3ff)
-	    emit_insn (gen_add_stack_pointer (GEN_INT (reg_offset)));
 	  else
-	    {
-	      rtx tmp = gen_rtx_REG (Pmode, PROLOGUE_TMP_REGNUM);
-
-	      emit_insn (gen_movsi (tmp, GEN_INT (reg_offset)));
-	      emit_insn (gen_add_stack_pointer (tmp));
-	    }
+	    emit_insn (gen_add_stack_pointer (GEN_INT (reg_offset)));
 	}
       else if (frame_pointer_needed)
 	{
@@ -762,18 +748,10 @@ mist32_expand_epilogue (void)
 
 	  if (reg_offset == 0)
 	    emit_insn (gen_movsi (stack_pointer_rtx, frame_pointer_rtx));
-	  else if (reg_offset <= 0x3ff)
+	  else
 	    {
 	      emit_insn (gen_movsi (stack_pointer_rtx, frame_pointer_rtx));
 	      emit_insn (gen_add_stack_pointer (GEN_INT (reg_offset)));
-	    }
-	  else
-	    {
-	      rtx tmp = gen_rtx_REG (Pmode, PROLOGUE_TMP_REGNUM);
-
-	      emit_insn (gen_movsi (tmp, GEN_INT (reg_offset)));
-	      emit_insn (gen_movsi (stack_pointer_rtx, frame_pointer_rtx));
-	      emit_insn (gen_add_stack_pointer (tmp));
 	    }
 	}
       else

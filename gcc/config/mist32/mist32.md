@@ -87,13 +87,41 @@
   [(set (mem:SI (pre_dec:SI (reg:SI STACK_POINTER_REGNUM)))
 	(match_operand:SI 0 "register_operand" "r"))]
   ""
-  "push\t%0")
+  "push\t%0"
+)
 
 (define_insn "popsi1"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(mem:SI (post_inc:SI (reg:SI STACK_POINTER_REGNUM))))]
   ""
-  "pop\t%0")
+  "pop\t%0"
+)
+
+; add stack pointer split
+(define_split
+  [(set (match_operand:SI 0 "register_operand" "k")
+	(plus:SI (match_dup 0)
+		 (match_operand:SI 1 "nonmemory_operand" "rI")))]
+  ""
+  [(set (match_dup 2) (match_dup 0))
+   (set (match_dup 2) (plus:SI (match_dup 2) (match_dup 1)))
+   (set (match_dup 0) (match_dup 2))]
+  "
+{ operands[2] = gen_rtx_REG (Pmode, TMP_REGNUM); }
+")
+
+; sub stack pointer split
+(define_split
+  [(set (match_operand:SI 0 "register_operand" "k")
+	(minus:SI (match_dup 0)
+		  (match_operand:SI 1 "nonmemory_operand" "rI")))]
+  ""
+  [(set (match_dup 2) (match_dup 0))
+   (set (match_dup 2) (minus:SI (match_dup 2) (match_dup 1)))
+   (set (match_dup 0) (match_dup 2))]
+  "
+{ operands[2] = gen_rtx_REG (Pmode, TMP_REGNUM); }
+")
 
 (define_expand "add_stack_pointer"
   [(set (reg:SI STACK_POINTER_REGNUM)
@@ -102,12 +130,12 @@
   ""
   "
 {
-  rtx tmp = gen_rtx_REG (Pmode, TMP_REGNUM);
-
-  emit_insn (gen_load_stack_pointer (tmp));
-  emit_insn (gen_addsi3 (tmp, tmp, operands[0]));
-  emit_insn (gen_save_stack_pointer (tmp));
-  DONE;
+  if (!o2_i11_operand (operands[0], SImode)) {
+    if(! (reload_in_progress || reload_completed))
+      operands[0] = force_reg (SImode, operands[0]);
+    else
+      FAIL;
+  }
 }
 ")
 
@@ -118,12 +146,12 @@
   ""
   "
 {
-  rtx tmp = gen_rtx_REG (Pmode, TMP_REGNUM);
-
-  emit_insn (gen_load_stack_pointer (tmp));
-  emit_insn (gen_subsi3 (tmp, tmp, operands[0]));
-  emit_insn (gen_save_stack_pointer (tmp));
-  DONE;
+  if (!o2_i11_operand (operands[0], SImode)) {
+    if(! (reload_in_progress || reload_completed))
+      operands[0] = force_reg (SImode, operands[0]);
+    else
+      FAIL;
+  }
 }
 ")
 
@@ -220,10 +248,8 @@
 {
   /* If this is a store, force the value into a register.  */
   if(! (reload_in_progress || reload_completed)) {
-
-  if (MEM_P (operands[0]))
-    operands[1] = force_reg (SImode, operands[1]);
-
+    if (MEM_P (operands[0]))
+      operands[1] = force_reg (SImode, operands[1]);
   }
 
   if (GET_CODE(operands[1]) == MEM &&
@@ -389,6 +415,22 @@
 
 ;; Addition 
 
+(define_expand "addsi3"
+  [(set (match_operand:SI 0 "register_operand" "")
+	(plus:SI (match_operand:SI 1 "register_operand" "")
+		 (match_operand:SI 2 "nonmemory_operand" "")))]
+  ""
+  "
+{
+  if (!o2_i11_operand (operands[2], SImode)) {
+    if(! (reload_in_progress || reload_completed))
+      operands[2] = force_reg (SImode, operands[2]);
+    else
+      FAIL;
+  }
+}
+")
+
 (define_insn "*inc"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(plus:SI (match_operand:SI 1 "register_operand" "r")
@@ -405,17 +447,34 @@
   "dec\t%0, %1"
 )
 
-(define_insn "addsi3"
-  [(set (match_operand:SI 0 "register_operand"          "=r,r")
-	(plus:SI (match_operand:SI 1 "register_operand" "%0,0")
-		 (match_operand:SI 2 "nonmemory_operand" "r,I")))]
+(define_insn "*addsi3_insn"
+  [(set (match_operand:SI 0 "register_operand" "=r,r,k")
+	(plus:SI (match_operand:SI 1 "register_operand" "%0,0,0")
+		 (match_operand:SI 2 "o2_i11_operand" "r,I,rI")))]
   ""
   "@
    add\t%0, %2
-   add\t%0, %2"
+   add\t%0, %2
+   #"
 )
 
 ;; Subtraction
+
+(define_expand "subsi3"
+  [(set (match_operand:SI 0 "register_operand" "")
+	(minus:SI (match_operand:SI 1 "register_operand" "")
+		  (match_operand:SI 2 "nonmemory_operand" "")))]
+  ""
+  "
+{
+  if (!o2_i11_operand (operands[2], SImode)) {
+    if(! (reload_in_progress || reload_completed))
+      operands[2] = force_reg (SImode, operands[2]);
+    else
+      FAIL;
+  }
+}
+")
 
 (define_insn "*dec"
   [(set (match_operand:SI 0 "register_operand" "=r")
@@ -425,14 +484,15 @@
   "dec\t%0, %1"
 )
 
-(define_insn "subsi3"
-  [(set (match_operand:SI 0 "register_operand"          "=r,r")
-	(minus:SI (match_operand:SI 1 "register_operand" "0,0")
-		  (match_operand:SI 2 "nonmemory_operand" "r,I")))]
+(define_insn "*subsi3_insn"
+  [(set (match_operand:SI 0 "register_operand" "=r,r,k")
+	(minus:SI (match_operand:SI 1 "register_operand" "0,0,0")
+		  (match_operand:SI 2 "o2_i11_operand" "r,I,rI")))]
   ""
   "@
    sub\t%0, %2
-   sub\t%0, %2"
+   sub\t%0, %2
+   #"
 )
 
 ;; Multiplication 
