@@ -29,8 +29,9 @@
 	.file		"crtn.asm"
 
 	.section	".init"
+	pop	rret
 	b	rret, #al
 
-	
 	.section	".fini"
+	pop	rret
 	b	rret, #al
