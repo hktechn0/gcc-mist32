@@ -609,20 +609,14 @@ enum reg_class
    && GET_MODE_SIZE (MODE1) <= UNITS_PER_WORD		\
    && GET_MODE_SIZE (MODE2) <= UNITS_PER_WORD)
 
-/*
-#define HARD_REGNO_RENAME_OK(OLD_REG, NEW_REG)	\
-  (OLD_REG != FRAME_POINTER_REGNUM &&		\
-   NEW_REG != STACK_POINTER_REGNUM)
-*/
-
 /* Globalizing directive for a label.  */
 #define GLOBAL_ASM_OP "\t.globl\t"
 
 /* This is how to output an assembler line
    that says to advance the location counter
    to a multiple of 2**LOG bytes.  */
-#define ASM_OUTPUT_ALIGN(STREAM,LOG)			\
-  fprintf (STREAM, "\t.align\t%d\n", 1 << (LOG))
+#define ASM_OUTPUT_ALIGN(STREAM,LOG)		\
+  fprintf (STREAM, "\t.align\t%d\n", LOG)
 
 
 /* Define this macro as a C expression which is nonzero if accessing less than

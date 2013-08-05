@@ -31,13 +31,13 @@
 	.section	".init"
 	.global	_init
 	.type	_init, @function
-	.align	4
+	.align	2
 _init:
 	push	rret
 
 	.section	".fini"
 	.global	_fini
 	.type	_fini, @function
-	.align	4
+	.align	2
 _fini:
 	push	rret
