@@ -33,9 +33,11 @@
 	.type	_init, @function
 	.align	4
 _init:
+	push	rret
 
 	.section	".fini"
 	.global	_fini
 	.type	_fini, @function
 	.align	4
 _fini:
+	push	rret
