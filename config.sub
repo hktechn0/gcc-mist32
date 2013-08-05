@@ -417,7 +417,6 @@ case $basic_machine in
 	| mipsisa64sr71k-* | mipsisa64sr71kel-* \
 	| mipsr5900-* | mipsr5900el-* \
 	| mipstx39-* | mipstx39el-* \
-	| mist32-* \
 	| mmix-* \
 	| mt-* \
 	| msp430-* \
