@@ -18,22 +18,18 @@
    along with GCC; see the file COPYING3.  If not see
    <http://www.gnu.org/licenses/>.  */
 
-
-/* Options to pass on to the assembler.  */
-#undef  ASM_SPEC
-#define ASM_SPEC ""
+#ifndef GCC_MIST32_H
+#define GCC_MIST32_H
 
 /* Define this to be a string constant containing `-D' options to define the
    predefined macros that identify this machine and system.  These macros will
    be predefined unless the `-ansi' option is specified.  */
 
 #define TARGET_CPU_CPP_BUILTINS()		\
-  do						\
     {						\
       builtin_define_std ("mist32");		\
-      builtin_assert ("machine=mist32");	\
+      builtin_define_std ("MIST32");		\
     }						\
-   while (0)
 
 #define TARGET_VERSION fprintf (stderr, " (mist32)");
 
@@ -43,13 +39,13 @@
 #undef  ENDFILE_SPEC
 #define ENDFILE_SPEC  "crtend.o%s crtn.o%s"
 
-/* Specs for the compiler proper */
-#undef	CC1_SPEC
-#define	CC1_SPEC ""
-
 /* Extra switches sometimes passed to the linker.  */
+#undef LIB_SPEC
+#define LIB_SPEC "%{!shared:%{!symbolic:-lc}}"
+
 #ifndef LINK_SPEC
-#define LINK_SPEC ""
+#define LINK_SPEC "%{h*} %{v:-V} \
+		   %{static:-Bstatic} %{shared:-shared} %{symbolic:-Bsymbolic}"
 #endif
 
 
@@ -643,8 +639,9 @@ enum reg_class
 #define SLOW_BYTE_ACCESS 1
 
 
-/* Section selection.  */
+#undef  ASM_SPEC
 
+/* Section selection.  */
 #define TEXT_SECTION_ASM_OP	"\t.section\t.text"
 #define DATA_SECTION_ASM_OP	"\t.section\t.data"
 #define BSS_SECTION_ASM_OP	"\t.section\t.bss"
@@ -742,3 +739,5 @@ enum mist32_function_type
 };
 
 #define MIST32_INTERRUPT_P(TYPE) ((TYPE) == MIST32_FUNCTION_INTERRUPT)
+
+#endif /* GCC_MIST32_H */
