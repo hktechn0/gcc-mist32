@@ -455,9 +455,9 @@ mist32_setup_incoming_varargs (CUMULATIVE_ARGS *cum, enum machine_mode mode,
   if (first_anon_arg < MAX_ARGS_IN_REGISTERS)
     {
       /* Note that first_reg_offset < MAX_ARGS_IN_REGISTERS.  */
-      int first_reg_offset = first_anon_arg;
+      int first_reg_offset = GP_ARG_FIRST + first_anon_arg;
       /* Size in words to "pretend" allocate.  */
-      int size = MAX_ARGS_IN_REGISTERS - first_reg_offset;
+      int size = MAX_ARGS_IN_REGISTERS - first_anon_arg;
       rtx regblock;
 
       regblock = gen_frame_mem (BLKmode,
