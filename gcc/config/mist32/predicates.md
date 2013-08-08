@@ -39,6 +39,11 @@
   return GPR_P(REGNO(op));
 })
 
+;; stack pointer register operand
+(define_predicate "stack_pointer_operand"
+  (and (match_code "reg")
+       (match_test "REGNO (op) == STACK_POINTER_REGNUM")))
+
 ;; Return true if OP is a const_int requiring two instructions to
 ;; load.
 
