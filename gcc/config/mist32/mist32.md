@@ -99,7 +99,7 @@
 
 ; add stack pointer split
 (define_split
-  [(set (match_operand:SI 0 "register_operand" "k")
+  [(set (match_operand:SI 0 "stack_pointer_operand" "k")
 	(plus:SI (match_dup 0)
 		 (match_operand:SI 1 "nonmemory_operand" "rI")))]
   ""
@@ -112,7 +112,7 @@
 
 ; sub stack pointer split
 (define_split
-  [(set (match_operand:SI 0 "register_operand" "k")
+  [(set (match_operand:SI 0 "stack_pointer_operand" "k")
 	(minus:SI (match_dup 0)
 		  (match_operand:SI 1 "nonmemory_operand" "rI")))]
   ""
