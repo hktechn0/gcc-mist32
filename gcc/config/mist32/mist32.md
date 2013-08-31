@@ -130,11 +130,9 @@
   ""
   "
 {
-  if (!o2_i11_operand (operands[0], SImode)) {
+  if (! o2_i11_operand (operands[0], SImode)) {
     if(! (reload_in_progress || reload_completed))
       operands[0] = force_reg (SImode, operands[0]);
-    else
-      FAIL;
   }
 }
 ")
@@ -146,11 +144,9 @@
   ""
   "
 {
-  if (!o2_i11_operand (operands[0], SImode)) {
+  if (! o2_i11_operand (operands[0], SImode)) {
     if(! (reload_in_progress || reload_completed))
       operands[0] = force_reg (SImode, operands[0]);
-    else
-      FAIL;
   }
 }
 ")
@@ -425,8 +421,6 @@
   if (!o2_i11_operand (operands[2], SImode)) {
     if(! (reload_in_progress || reload_completed))
       operands[2] = force_reg (SImode, operands[2]);
-    else
-      FAIL;
   }
 }
 ")
@@ -470,8 +464,6 @@
   if (!o2_i11_operand (operands[2], SImode)) {
     if(! (reload_in_progress || reload_completed))
       operands[2] = force_reg (SImode, operands[2]);
-    else
-      FAIL;
   }
 }
 ")
