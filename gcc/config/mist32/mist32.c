@@ -657,8 +657,14 @@ mist32_expand_prologue (void)
 
   if (frame_size == 0)
     ; /* Nothing to do.  */
-  else
+  else if (frame_size <= 0x3ff)
       emit_insn (gen_sub_stack_pointer (GEN_INT (frame_size)));
+  else
+    {
+      rtx tmp = gen_rtx_REG (Pmode, PROLOGUE_TMP_REGNUM);
+      emit_insn (gen_movsi (tmp, GEN_INT (frame_size)));
+      emit_insn (gen_sub_stack_pointer (tmp));
+    }
 
   if (frame_pointer_needed)
     emit_insn (gen_movsi (frame_pointer_rtx, stack_pointer_rtx));
@@ -733,25 +739,22 @@ mist32_expand_epilogue (void)
 
       /* The first thing to do is point the sp at the bottom of the register
 	 save area.  */
-      if (can_trust_sp_p)
+      if (can_trust_sp_p || frame_pointer_needed)
 	{
 	  unsigned int reg_offset = var_size + args_size;
+
+	  if (frame_pointer_needed)
+	    emit_insn (gen_movsi (stack_pointer_rtx, frame_pointer_rtx));
 
 	  if (reg_offset == 0)
 	    ; /* Nothing to do.  */
-	  else
+	  else if (reg_offset <= 0x3ff)
 	    emit_insn (gen_add_stack_pointer (GEN_INT (reg_offset)));
-	}
-      else if (frame_pointer_needed)
-	{
-	  unsigned int reg_offset = var_size + args_size;
-
-	  if (reg_offset == 0)
-	    emit_insn (gen_movsi (stack_pointer_rtx, frame_pointer_rtx));
 	  else
 	    {
-	      emit_insn (gen_movsi (stack_pointer_rtx, frame_pointer_rtx));
-	      emit_insn (gen_add_stack_pointer (GEN_INT (reg_offset)));
+	      rtx tmp = gen_rtx_REG (Pmode, PROLOGUE_TMP_REGNUM);
+	      emit_insn (gen_movsi (tmp, GEN_INT (reg_offset)));
+	      emit_insn (gen_add_stack_pointer (tmp));
 	    }
 	}
       else

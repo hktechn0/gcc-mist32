@@ -1,4 +1,3 @@
-;; -*- Scheme -*-
 ;; Constraint definitions for mist32.
 ;; Copyright (C) 2012 Free Software Foundation, Inc.
 ;;
