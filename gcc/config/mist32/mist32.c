@@ -658,12 +658,16 @@ mist32_expand_prologue (void)
   if (frame_size == 0)
     ; /* Nothing to do.  */
   else if (frame_size <= 0x3ff)
-      emit_insn (gen_sub_stack_pointer (GEN_INT (frame_size)));
+    emit_insn (gen_sub_stack_pointer (GEN_INT (frame_size)));
   else
     {
-      rtx tmp = gen_rtx_REG (Pmode, PROLOGUE_TMP_REGNUM);
-      emit_insn (gen_movsi (tmp, GEN_INT (frame_size)));
-      emit_insn (gen_sub_stack_pointer (tmp));
+      int remaining = frame_size;
+
+      while(remaining > 0)
+	{
+	  emit_insn (gen_sub_stack_pointer (GEN_INT (remaining & 0x3ff)));
+	  remaining -= 0x3ff;
+	}
     }
 
   if (frame_pointer_needed)
@@ -752,9 +756,13 @@ mist32_expand_epilogue (void)
 	    emit_insn (gen_add_stack_pointer (GEN_INT (reg_offset)));
 	  else
 	    {
-	      rtx tmp = gen_rtx_REG (Pmode, PROLOGUE_TMP_REGNUM);
-	      emit_insn (gen_movsi (tmp, GEN_INT (reg_offset)));
-	      emit_insn (gen_add_stack_pointer (tmp));
+	      int remaining = reg_offset;
+
+	      while(remaining > 0)
+		{
+		  emit_insn (gen_sub_stack_pointer (GEN_INT (remaining & 0x3ff)));
+		  remaining -= 0x3ff;
+		}
 	    }
 	}
       else
