@@ -426,16 +426,16 @@
 ")
 
 (define_insn "*inc"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(plus:SI (match_operand:SI 1 "register_operand" "r")
+  [(set (match_operand:SI 0 "general_register_operand" "=r")
+	(plus:SI (match_operand:SI 1 "general_register_operand" "r")
 		 (const_int 1)))]
   ""
   "inc\t%0, %1"
 )
 
 (define_insn "*dec_"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(plus:SI (match_operand:SI 1 "register_operand" "r")
+  [(set (match_operand:SI 0 "general_register_operand" "=r")
+	(plus:SI (match_operand:SI 1 "general_register_operand" "r")
 		 (const_int -1)))]
   ""
   "dec\t%0, %1"
@@ -469,8 +469,8 @@
 ")
 
 (define_insn "*dec"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(minus:SI (match_operand:SI 1 "register_operand" "r")
+  [(set (match_operand:SI 0 "general_register_operand" "=r")
+	(minus:SI (match_operand:SI 1 "general_register_operand" "r")
 		  (const_int 1)))]
   ""
   "dec\t%0, %1"

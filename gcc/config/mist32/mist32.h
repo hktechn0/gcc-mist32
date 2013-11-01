@@ -243,7 +243,6 @@
 
 /* Compiler temporary register */
 #define TMP_REGNUM (GP_REG_FIRST + 7)
-#define PROLOGUE_TMP_REGNUM  (GP_REG_FIRST + 0)
 
 /* Register to use for pushing function arguments.  */
 #define STACK_POINTER_REGNUM 33
