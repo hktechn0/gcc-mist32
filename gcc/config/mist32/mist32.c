@@ -663,11 +663,15 @@ mist32_expand_prologue (void)
     {
       int remaining = frame_size;
 
+      emit_insn (gen_movsi (gen_rtx_REG (Pmode, TMP_REGNUM), stack_pointer_rtx));
       while(remaining > 0)
 	{
-	  emit_insn (gen_sub_stack_pointer (GEN_INT (remaining & 0x3ff)));
+	  emit_insn (gen_subsi3 (gen_rtx_REG (Pmode, TMP_REGNUM),
+				 gen_rtx_REG (Pmode, TMP_REGNUM),
+				 GEN_INT ((remaining > 0x3ff) ? 0x3ff : remaining)));
 	  remaining -= 0x3ff;
 	}
+      emit_insn (gen_movsi (stack_pointer_rtx, gen_rtx_REG (Pmode, TMP_REGNUM)));
     }
 
   if (frame_pointer_needed)
@@ -758,11 +762,15 @@ mist32_expand_epilogue (void)
 	    {
 	      int remaining = reg_offset;
 
+	      emit_insn (gen_movsi (gen_rtx_REG (Pmode, TMP_REGNUM), stack_pointer_rtx));
 	      while(remaining > 0)
 		{
-		  emit_insn (gen_sub_stack_pointer (GEN_INT (remaining & 0x3ff)));
+		  emit_insn (gen_addsi3 (gen_rtx_REG (Pmode, TMP_REGNUM),
+					 gen_rtx_REG (Pmode, TMP_REGNUM),
+					 GEN_INT ((remaining > 0x3ff) ? 0x3ff : remaining)));
 		  remaining -= 0x3ff;
 		}
+	      emit_insn (gen_movsi (stack_pointer_rtx, gen_rtx_REG (Pmode, TMP_REGNUM)));
 	    }
 	}
       else
