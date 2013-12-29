@@ -70,5 +70,5 @@
 (define_constraint "T"
   "An indirect of a pointer."
   (and (match_code "mem")
-       (match_test "MEM_P (op) && REG_P (XEXP (op, 0))"))
+       (match_code "reg" "0"))
 )

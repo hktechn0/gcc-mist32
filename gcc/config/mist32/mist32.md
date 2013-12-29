@@ -99,9 +99,9 @@
 
 ; add stack pointer split
 (define_split
-  [(set (match_operand:SI 0 "stack_pointer_operand" "k")
+  [(set (match_operand:SI 0 "stack_pointer_operand" "")
 	(plus:SI (match_dup 0)
-		 (match_operand:SI 1 "nonmemory_operand" "rI")))]
+		 (match_operand:SI 1 "nonmemory_operand" "")))]
   ""
   [(set (match_dup 2) (match_dup 0))
    (set (match_dup 2) (plus:SI (match_dup 2) (match_dup 1)))
@@ -112,9 +112,9 @@
 
 ; sub stack pointer split
 (define_split
-  [(set (match_operand:SI 0 "stack_pointer_operand" "k")
+  [(set (match_operand:SI 0 "stack_pointer_operand" "")
 	(minus:SI (match_dup 0)
-		  (match_operand:SI 1 "nonmemory_operand" "rI")))]
+		  (match_operand:SI 1 "nonmemory_operand" "")))]
   ""
   [(set (match_dup 2) (match_dup 0))
    (set (match_dup 2) (minus:SI (match_dup 2) (match_dup 1)))
@@ -169,6 +169,22 @@
 }
 ")
 
+(define_insn "*loadqi_disp"
+  [(set (match_operand:QI 0 "register_operand" "=r")
+	(mem:QI (plus:SI (match_operand:SI 1 "register_operand" "%r")
+			 (match_operand:SI 2 "disp6_operand" "i"))))]
+  ""
+  "ldd8\t%0, %1, %2"
+)
+
+(define_insn "*storeqi_disp"
+  [(set (mem:QI (plus:SI (match_operand:SI 0 "register_operand" "%r")
+			 (match_operand:SI 1 "disp6_operand" "i")))
+	(match_operand:QI 2 "register_operand" "r"))]
+  ""
+  "std8\t%2, %0, %1"
+)
+
 (define_insn "*loadqi_mem"
   [(set (match_operand:QI 0         "register_operand" "=r")
 	(mem:QI (match_operand:SI 1 "register_operand" "r")))]
@@ -207,6 +223,22 @@
     operands[1] = force_reg (HImode, operands[1]);
 }
 ")
+
+(define_insn "*loadhi_disp"
+  [(set (match_operand:HI 0 "register_operand" "=r")
+	(mem:HI (plus:SI (match_operand:SI 1 "register_operand" "%r")
+			 (match_operand:SI 2 "disp7_operand" "i"))))]
+  ""
+  "ldd16\t%0, %1, %2"
+)
+
+(define_insn "*storehi_disp "
+  [(set (mem:HI (plus:SI (match_operand:SI 0 "register_operand" "%r")
+			 (match_operand:SI 1 "disp7_operand" "i")))
+	(match_operand:HI 2 "register_operand" "r"))]
+  ""
+  "std16\t%2, %0, %1"
+)
 
 (define_insn "*loadhi_mem"
   [(set (match_operand:HI 0         "register_operand" "=r")
@@ -248,19 +280,29 @@
       operands[1] = force_reg (SImode, operands[1]);
   }
 
-  if (GET_CODE(operands[1]) == MEM &&
-      (GET_CODE(XEXP(operands[1], 0)) == LABEL_REF || 
-       GET_CODE(XEXP(operands[1], 0)) == SYMBOL_REF)) {
+  if (MEM_P (operands[1])
+      && (GET_CODE (XEXP (operands[1], 0)) == LABEL_REF
+          || GET_CODE (XEXP (operands[1], 0)) == SYMBOL_REF)) {
     emit_insn(gen_movsi_split(operands[0], operands[1]));
     DONE;
   }
 
-  if (REG_P (operands[0]) && lih_wl16_operand (operands[1], SImode)) {
+  if (REG_P (operands[0])
+      && lih_wl16_operand (operands[1], SImode)) {
     emit_insn(gen_movsi_split(operands[0], operands[1]));
     DONE;
   }
 }
 ")
+
+(define_expand "movsi_split"
+  [(set (match_operand:SI 0 "register_operand" "")
+	(high:SI (match_operand:SI 1 "lih_wl16_operand" "")))
+   (set (match_dup 0)
+	(lo_sum:SI (match_dup 0) (match_dup 1)))]
+  ""
+  ""
+)
 
 (define_insn "*movepc"
   [(set (match_operand:SI 0 "register_operand" "=r")
@@ -282,6 +324,37 @@
 	(match_operand:SI 0 "register_operand" "r"))]
   ""
   "srspw\t%0"
+)
+
+(define_insn "*loadsi_disp"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(mem:SI (plus:SI (match_operand:SI 1 "register_operand" "%r")
+			 (match_operand:SI 2 "disp8_operand" "i"))))]
+  ""
+  "ldd32\t%0, %1, %2"
+)
+
+(define_insn "*storesi_disp"
+  [(set (mem:SI (plus:SI (match_operand:SI 0 "register_operand" "%r")
+			 (match_operand:SI 1 "disp8_operand" "i")))
+	(match_operand:SI 2 "register_operand" "r"))]
+  ""
+  "std32\t%2, %0, %1"
+)
+
+(define_insn "set_hi_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(high:SI (match_operand 1 "lih_wl16_operand" "g")))]
+  ""
+  "lih\t%0, hi(%1)"
+)
+
+(define_insn "lo_sum_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(lo_sum:SI (match_operand:SI 1 "register_operand" "%0")
+		   (match_operand:SI 2 "lih_wl16_operand" "g")))]
+  ""
+  "wl16\t%0, lo(%2)"
 )
 
 (define_split
@@ -309,30 +382,6 @@
 	(lo_sum:SI (match_dup 0)
 		   (match_dup 1)))]
   ""
-)
-
-(define_expand "movsi_split"
-  [(set (match_operand:SI 0 "register_operand" "")
-	(high:SI (match_operand:SI 1 "lih_wl16_operand" "")))
-   (set (match_dup 0)
-	(lo_sum:SI (match_dup 0) (match_dup 1)))]
-  ""
-  ""
-)
-
-(define_insn "set_hi_si"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(high:SI (match_operand 1 "lih_wl16_operand" "")))]
-  ""
-  "lih\t%0, hi(%1)"
-)
-
-(define_insn "lo_sum_si"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(lo_sum:SI (match_operand:SI 1 "register_operand" "0")
-		   (match_operand:SI 2 "lih_wl16_operand" "")))]
-  ""
-  "wl16\t%0, lo(%2)"
 )
 
 (define_insn "*loadsi_mem"
