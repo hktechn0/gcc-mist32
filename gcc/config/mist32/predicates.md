@@ -44,9 +44,42 @@
   (and (match_code "reg")
        (match_test "REGNO (op) == STACK_POINTER_REGNUM")))
 
+;; Return true if OP is load/store with displacement
+(define_predicate "disp8_operand"
+  (match_code "const_int")
+{
+  if (CONST_INT_P (op)
+      && !(XINT (op, 0) & 0x3)
+      && -128 <= XINT (op, 0)
+      && XINT (op, 0) <= 127)
+    return 1;
+
+   return 0;
+})
+(define_predicate "disp7_operand"
+  (match_code "const_int")
+{
+  if (CONST_INT_P (op)
+      && !(XINT (op, 0) & 0x1)
+      && -64 <= XINT (op, 0)
+      && XINT (op, 0) <= 63)
+    return 1;
+
+   return 0;
+})
+(define_predicate "disp6_operand"
+  (match_code "const_int")
+{
+  if (CONST_INT_P (op)
+      && -32 <= XINT (op, 0)
+      && XINT (op, 0) <= 31)
+    return 1;
+
+   return 0;
+})
+
 ;; Return true if OP is a const_int requiring two instructions to
 ;; load.
-
 (define_predicate "two_insn_const_operand"
   (match_code "const_int")
 {
@@ -61,8 +94,7 @@
   return 1;
 })
 
-;; Returns 1 if OP is a symbol reference.
-
+;; Returns true if OP is a symbol reference.
 (define_predicate "symbolic_operand"
   (match_code "symbol_ref,label_ref,const")
 {
@@ -78,8 +110,7 @@
     }
 })
 
-;; Returns 1 if OP is an acceptable operand for lih/w16l.
-
+;; Returns true if OP is an acceptable operand for lih/w16l.
 (define_predicate "lih_wl16_operand"
   (match_code "symbol_ref,label_ref,const_int")
 {
@@ -93,8 +124,7 @@
   return 0;
 })
 
-; mist32 O2/I11 operand
-
+;; mist32 O2/I11 operand
 (define_predicate "o2_i11_operand"
   (match_code "reg,const_int")
 {
