@@ -36,7 +36,6 @@
 #include "recog.h"
 #include "diagnostic-core.h"
 #include "ggc.h"
-#include "integrate.h"
 #include "df.h"
 #include "tm_p.h"
 #include "target.h"
@@ -44,14 +43,19 @@
 #include "tm-constrs.h"
 #include "opts.h"
 
-/* function value */
+/* The value of TARGET_ATTRIBUTE_TABLE.  */
+static const struct attribute_spec mist32_attribute_table[] = {
+  /* Name, min_len, max_len, decl_req, type_req, fn_type_req, handler,
+     affects_type_identity.  */
+  { "interrupt", 0, 0, true,  false, false, NULL, false },
+  { NULL,        0, 0, false, false, false, NULL, false }
+};
 
-#undef TARGET_FUNCTION_VALUE
-#define TARGET_FUNCTION_VALUE mist32_function_value
-#undef TARGET_LIBCALL_VALUE
-#define TARGET_LIBCALL_VALUE mist32_libcall_value
-#undef TARGET_FUNCTION_VALUE_REGNO_P
-#define TARGET_FUNCTION_VALUE_REGNO_P mist32_function_value_regno_p
+/* Initialize the GCC target structure.  */
+#undef  TARGET_ATTRIBUTE_TABLE
+#define TARGET_ATTRIBUTE_TABLE mist32_attribute_table
+
+/* function value */
 
 static rtx
 mist32_function_value (const_tree valtype,
@@ -74,13 +78,14 @@ mist32_function_value_regno_p (const unsigned int regno)
   return (regno == GP_RETURN);
 }
 
+#undef TARGET_FUNCTION_VALUE
+#define TARGET_FUNCTION_VALUE mist32_function_value
+#undef TARGET_LIBCALL_VALUE
+#define TARGET_LIBCALL_VALUE mist32_libcall_value
+#undef TARGET_FUNCTION_VALUE_REGNO_P
+#define TARGET_FUNCTION_VALUE_REGNO_P mist32_function_value_regno_p
 
 /* print operand */
-
-#undef  TARGET_PRINT_OPERAND
-#define TARGET_PRINT_OPERAND mist32_print_operand
-#undef  TARGET_PRINT_OPERAND_ADDRESS
-#define TARGET_PRINT_OPERAND_ADDRESS mist32_print_operand_address
 
 void
 mist32_print_operand (FILE *file, rtx x, int code)
@@ -244,20 +249,16 @@ mist32_print_operand_address (FILE *stream, rtx address)
     }
 }
 
-
-#undef TARGET_LEGITIMATE_ADDRESS_P
-#define TARGET_LEGITIMATE_ADDRESS_P mist32_legitimate_address_p
-/*
-#undef TARGET_LEGITIMATE_CONSTANT_P
-#define TARGET_LEGITIMATE_CONSTANT_P mist32_legitimate_constant_p
-*/
+#undef  TARGET_PRINT_OPERAND
+#define TARGET_PRINT_OPERAND mist32_print_operand
+#undef  TARGET_PRINT_OPERAND_ADDRESS
+#define TARGET_PRINT_OPERAND_ADDRESS mist32_print_operand_address
 
 static bool
 mist32_legitimate_address_p (enum machine_mode mode, rtx x, bool strict)
 {
   if (! REG_P (x))
     return false;
-  
   if (strict)
     {
       if (GPR_P (x))
@@ -271,40 +272,300 @@ mist32_legitimate_address_p (enum machine_mode mode, rtx x, bool strict)
 	return true;
     }
 
+  /*
+  switch (GET_CODE (x)) {
+  case PLUS:
+    if (REG_P (XEXP (x, 0))
+	&& GPR_P (REGNO (XEXP (x, 0)))
+	&& CONSTANT_ADDRESS_P (XEXP (x, 1))
+	&& CONST_INT_P (XEXP (x, 1))) {
+      if (mode == SImode
+	  && INTVAL (XEXP (x, 1)) <= 127
+	  && INTVAL (XEXP (x, 1)) >= -128)
+	return true;
+      if (mode == QImode
+	  && INTVAL (XEXP (x, 1)) <= 31
+	  && INTVAL (XEXP (x, 1)) >= -32)
+	return true;
+    }
+    break;
+  case REG:
+    if (strict)
+      return GPR_P (REGNO (x));
+    else
+      return (GPR_P (REGNO (x))
+	      || ! HARD_REGISTER_P (x));
+    break;
+  case SYMBOL_REF:
+  case LABEL_REF:
+    return true;
+    break;
+  default:
+    break;
+  }
+  */
+
   return false;
 }
 
-/*
 static bool
 mist32_legitimate_constant_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx x)
 {
-  return !(GET_CODE (x) == CONST
-	   && GET_CODE (XEXP (x, 0)) == PLUS
-	   && (GET_CODE (XEXP (XEXP (x, 0), 0)) == SYMBOL_REF
-	       || GET_CODE (XEXP (XEXP (x, 0), 0)) == LABEL_REF)
-	   && CONST_INT_P (XEXP (XEXP (x, 0), 1))
-	   && UINTVAL (XEXP (XEXP (x, 0), 1)) > 0x3ff);
+  return (! (GET_CODE (x) == CONST
+	     && GET_CODE (XEXP (x, 0)) == PLUS
+	     && (GET_CODE (XEXP (XEXP (x, 0), 0)) == SYMBOL_REF || GET_CODE (XEXP (XEXP (x, 0), 0)) == LABEL_REF)
+	     && CONST_INT_P (XEXP (XEXP (x, 0), 1))
+	     && (unsigned HOST_WIDE_INT) INTVAL (XEXP (XEXP (x, 0), 1)) > 0x3ff));
+
+  /*
+  switch (GET_CODE (x)) {
+  case CONST:
+    break;
+  case SYMBOL_REF:
+  case LABEL_REF:
+  case CONST_INT:
+    return true;
+    break;
+  default:
+    break;
+  }
+
+  return false;
+  */
 }
-*/
+
+#undef TARGET_LEGITIMATE_ADDRESS_P
+#define TARGET_LEGITIMATE_ADDRESS_P mist32_legitimate_address_p
+#undef TARGET_LEGITIMATE_CONSTANT_P
+#define TARGET_LEGITIMATE_CONSTANT_P mist32_legitimate_constant_p
 
 /*
 #undef  TARGET_MEMORY_MOVE_COST
-#define TARGET_MEMORY_MOVE_COST m32r_memory_move_cost
+#define TARGET_MEMORY_MOVE_COST mist32_memory_move_cost
 #undef  TARGET_RTX_COSTS
-#define TARGET_RTX_COSTS m32r_rtx_costs
+#define TARGET_RTX_COSTS mist32_rtx_costs
 #undef  TARGET_ADDRESS_COST
 #define TARGET_ADDRESS_COST hook_int_rtx_bool_0
+*/
 
 #undef  TARGET_PROMOTE_PROTOTYPES
 #define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_true
-#undef  TARGET_RETURN_IN_MEMORY
-#define TARGET_RETURN_IN_MEMORY m32r_return_in_memory
 
+/*
 #undef TARGET_CONDITIONAL_REGISTER_USAGE
 #define TARGET_CONDITIONAL_REGISTER_USAGE mist32_conditional_register_usage
 */
 
+/* The ROUND_ADVANCE* macros are local to this file.  */
+/* Round SIZE up to a word boundary.  */
+#define ROUND_ADVANCE(SIZE)				\
+  (((SIZE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
 
+/* Round arg MODE/TYPE up to the next word boundary.  */
+#define ROUND_ADVANCE_ARG(MODE, TYPE)				\
+  ((MODE) == BLKmode						\
+   ? ROUND_ADVANCE ((unsigned int) int_size_in_bytes (TYPE))	\
+   : ROUND_ADVANCE ((unsigned int) GET_MODE_SIZE (MODE)))
+
+/* Round CUM up to the necessary point for argument MODE/TYPE.  */
+#define ROUND_ADVANCE_CUM(CUM, MODE, TYPE) (CUM)
+
+/* Return boolean indicating arg of type TYPE and mode MODE will be passed in
+   a reg.  This includes arguments that have to be passed by reference as the
+   pointer to them is passed in a reg if one is available (and that is what
+   we're given).
+   This macro is only used in this file.  */
+#define PASS_IN_REG_P(CUM, MODE, TYPE) \
+  (ROUND_ADVANCE_CUM ((CUM), (MODE), (TYPE)) < MAX_ARGS_IN_REGISTERS)
+
+/* Return nonzero if TYPE must be passed by indirect reference.  */
+
+static bool
+mist32_pass_by_reference (cumulative_args_t ca ATTRIBUTE_UNUSED,
+			  enum machine_mode mode, const_tree type,
+			  bool named ATTRIBUTE_UNUSED)
+{
+  int size;
+
+  if (type)
+    size = int_size_in_bytes (type);
+  else
+    size = GET_MODE_SIZE (mode);
+
+  return (size < 0 || size > 4);
+}
+
+static bool
+mist32_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
+{
+  cumulative_args_t dummy = pack_cumulative_args (NULL);
+
+  return mist32_pass_by_reference (dummy, TYPE_MODE (type), type, false);
+}
+
+/* Forward declaration.  */
+static void mist32_setup_incoming_varargs (cumulative_args_t, enum machine_mode,
+					   tree, int *, int);
+static rtx mist32_function_arg (cumulative_args_t, enum machine_mode,
+				const_tree, bool);
+static void mist32_function_arg_advance (cumulative_args_t, enum machine_mode,
+					 const_tree, bool);
+
+/* Returns the number of bytes in which *part* of a parameter of machine
+   mode MODE and tree type TYPE (which may be NULL if the type is not known).
+   If the argument fits entirely in the argument registers, or entirely on
+   the stack, then 0 is returned.
+   CUM is the number of argument registers already used by earlier
+   parameters to the function.  */
+
+static int
+mist32_arg_partial_bytes (cumulative_args_t cum_v, enum machine_mode mode,
+			  tree type, bool named ATTRIBUTE_UNUSED)
+{
+  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
+  int words;
+  unsigned int size =
+    (((mode == BLKmode && type)
+      ? (unsigned int) int_size_in_bytes (type)
+      : GET_MODE_SIZE (mode)) + UNITS_PER_WORD - 1)
+    / UNITS_PER_WORD;
+
+  if (*cum >= MAX_ARGS_IN_REGISTERS)
+    words = 0;
+  else if (*cum + size > MAX_ARGS_IN_REGISTERS)
+    words = (*cum + size) - MAX_ARGS_IN_REGISTERS;
+  else
+    words = 0;
+
+  return words * UNITS_PER_WORD;
+}
+
+static void
+mist32_setup_incoming_varargs (cumulative_args_t cum, enum machine_mode mode,
+			       tree type, int *pretend_size, int no_rtl)
+{
+  int first_anon_arg;
+
+  if (no_rtl)
+    return;
+
+  /* All BLKmode values are passed by reference.  */
+  gcc_assert (mode != BLKmode);
+
+  first_anon_arg = (ROUND_ADVANCE_CUM (*get_cumulative_args (cum), mode, type)
+		    + ROUND_ADVANCE_ARG (mode, type));
+
+  if (first_anon_arg < MAX_ARGS_IN_REGISTERS)
+    {
+      /* Note that first_reg_offset < MAX_ARGS_IN_REGISTERS.  */
+      int first_reg_offset = GP_ARG_FIRST + first_anon_arg;
+      /* Size in words to "pretend" allocate.  */
+      int size = MAX_ARGS_IN_REGISTERS - first_anon_arg;
+      rtx regblock;
+
+      regblock = gen_frame_mem (BLKmode,
+				plus_constant (Pmode, arg_pointer_rtx,
+					       FIRST_PARM_OFFSET (0)));
+      set_mem_alias_set (regblock, get_varargs_alias_set ());
+      move_block_from_reg (first_reg_offset, regblock, size);
+
+      *pretend_size = (size * UNITS_PER_WORD);
+    }
+}
+
+
+/* Return the next register to be used to hold a function argument or
+   NULL_RTX if there's no more space.  */
+
+static rtx
+mist32_function_arg (cumulative_args_t cum_v, enum machine_mode mode,
+		     const_tree type ATTRIBUTE_UNUSED,
+		     bool named ATTRIBUTE_UNUSED)
+{
+  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
+
+  return (PASS_IN_REG_P (*cum, mode, type)
+	  ? gen_rtx_REG (mode, GP_ARG_FIRST + 
+			 ROUND_ADVANCE_CUM (*cum, mode, type))
+	  : NULL_RTX);
+}
+
+/* Update the data in CUM to advance over an argument
+   of mode MODE and data type TYPE.
+   (TYPE is null for libcalls where that information may not be available.)  */
+
+static void
+mist32_function_arg_advance (cumulative_args_t cum_v, enum machine_mode mode,
+			     const_tree type, bool named ATTRIBUTE_UNUSED)
+{
+  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
+
+  *cum = (ROUND_ADVANCE_CUM (*cum, mode, type)
+	  + ROUND_ADVANCE_ARG (mode, type));
+}
+
+
+#undef  TARGET_RETURN_IN_MEMORY
+#define TARGET_RETURN_IN_MEMORY mist32_return_in_memory
+
+#undef  TARGET_SETUP_INCOMING_VARARGS
+#define TARGET_SETUP_INCOMING_VARARGS mist32_setup_incoming_varargs
+#undef  TARGET_MUST_PASS_IN_STACK
+#define TARGET_MUST_PASS_IN_STACK must_pass_in_stack_var_size
+#undef  TARGET_PASS_BY_REFERENCE
+#define TARGET_PASS_BY_REFERENCE mist32_pass_by_reference
+#undef  TARGET_ARG_PARTIAL_BYTES
+#define TARGET_ARG_PARTIAL_BYTES mist32_arg_partial_bytes
+#undef  TARGET_FUNCTION_ARG
+#define TARGET_FUNCTION_ARG mist32_function_arg
+#undef  TARGET_FUNCTION_ARG_ADVANCE
+#define TARGET_FUNCTION_ARG_ADVANCE mist32_function_arg_advance
+
+/* Worker function for TARGET_CAN_ELIMINATE.  */
+
+bool
+mist32_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
+{
+  return (from == ARG_POINTER_REGNUM && to == STACK_POINTER_REGNUM
+          ? ! frame_pointer_needed
+          : true);
+}
+
+#undef TARGET_CAN_ELIMINATE
+#define TARGET_CAN_ELIMINATE mist32_can_eliminate
+
+/* Type of function DECL.
+
+   The result is cached.  To reset the cache at the end of a function,
+   call with DECL = NULL_TREE.  */
+
+enum mist32_function_type
+mist32_compute_function_type (tree decl)
+{
+  /* Cached value.  */
+  static enum mist32_function_type fn_type = MIST32_FUNCTION_UNKNOWN;
+  /* Last function we were called for.  */
+  static tree last_fn = NULL_TREE;
+
+  /* Resetting the cached value?  */
+  if (decl == NULL_TREE)
+    {
+      fn_type = MIST32_FUNCTION_UNKNOWN;
+      last_fn = NULL_TREE;
+      return fn_type;
+    }
+
+  if (decl == last_fn && fn_type != MIST32_FUNCTION_UNKNOWN)
+    return fn_type;
+
+  /* Compute function type.  */
+  fn_type = (lookup_attribute ("interrupt", DECL_ATTRIBUTES (current_function_decl)) != NULL_TREE
+	     ? MIST32_FUNCTION_INTERRUPT
+	     : MIST32_FUNCTION_NORMAL);
+
+  last_fn = decl;
+  return fn_type;
+}
 
 /* Structure to be filled in by mist32_compute_frame_size() with register
    save masks, and offsets for the current function.  */
@@ -341,203 +602,8 @@ static struct mist32_frame_info 	zero_frame_info;
        || (interrupt_p && call_really_used_regs[regno])))
 
 #define MUST_SAVE_FRAME_POINTER	 (df_regs_ever_live_p (FRAME_POINTER_REGNUM))
-#define MUST_SAVE_RETURN_POINTER (df_regs_ever_live_p (RETURN_POINTER_REGNUM) || crtl->profile)
-
-/* The value of TARGET_ATTRIBUTE_TABLE.  */
-static const struct attribute_spec mist32_attribute_table[] = {
-  /* { name, min_len, max_len, decl_req, type_req, fn_type_req, handler } */
-  { "interrupt", 0, 0, true,  false, false, NULL },
-  { NULL,        0, 0, false, false, false, NULL }
-};
-
-/* Initialize the GCC target structure.  */
-#undef  TARGET_ATTRIBUTE_TABLE
-#define TARGET_ATTRIBUTE_TABLE mist32_attribute_table
-
-/* The ROUND_ADVANCE* macros are local to this file.  */
-/* Round SIZE up to a word boundary.  */
-#define ROUND_ADVANCE(SIZE)				\
-  (((SIZE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
-
-/* Round arg MODE/TYPE up to the next word boundary.  */
-#define ROUND_ADVANCE_ARG(MODE, TYPE)				\
-  ((MODE) == BLKmode						\
-   ? ROUND_ADVANCE ((unsigned int) int_size_in_bytes (TYPE))	\
-   : ROUND_ADVANCE ((unsigned int) GET_MODE_SIZE (MODE)))
-
-/* Round CUM up to the necessary point for argument MODE/TYPE.  */
-#define ROUND_ADVANCE_CUM(CUM, MODE, TYPE) (CUM)
-
-/* Return boolean indicating arg of type TYPE and mode MODE will be passed in
-   a reg.  This includes arguments that have to be passed by reference as the
-   pointer to them is passed in a reg if one is available (and that is what
-   we're given).
-   This macro is only used in this file.  */
-#define PASS_IN_REG_P(CUM, MODE, TYPE) \
-  (ROUND_ADVANCE_CUM ((CUM), (MODE), (TYPE)) < MAX_ARGS_IN_REGISTERS)
-
-/* Forward declaration.  */
-static void mist32_setup_incoming_varargs (CUMULATIVE_ARGS *, enum machine_mode,
-					   tree, int *, int);
-static rtx mist32_function_arg (CUMULATIVE_ARGS *, enum machine_mode,
-				const_tree, bool);
-static void mist32_function_arg_advance (CUMULATIVE_ARGS *, enum machine_mode,
-					 const_tree, bool);
-
-#undef  TARGET_SETUP_INCOMING_VARARGS
-#define TARGET_SETUP_INCOMING_VARARGS mist32_setup_incoming_varargs
-#undef  TARGET_MUST_PASS_IN_STACK
-#define TARGET_MUST_PASS_IN_STACK mist32_must_pass_in_stack
-#undef  TARGET_PASS_BY_REFERENCE
-#define TARGET_PASS_BY_REFERENCE hook_pass_by_reference_must_pass_in_stack
-#undef  TARGET_ARG_PARTIAL_BYTES
-#define TARGET_ARG_PARTIAL_BYTES mist32_arg_partial_bytes
-#undef  TARGET_FUNCTION_ARG
-#define TARGET_FUNCTION_ARG mist32_function_arg
-#undef  TARGET_FUNCTION_ARG_ADVANCE
-#define TARGET_FUNCTION_ARG_ADVANCE mist32_function_arg_advance
-
-/* Return true if we should pass an argument on the stack rather than
-   in registers.  */
-static bool
-mist32_must_pass_in_stack (enum machine_mode mode, const_tree type)
-{
-  if (mode == BLKmode)
-    return true;
-  if (type == NULL)
-    return false;
-  return AGGREGATE_TYPE_P (type);
-}
-
-/* Returns the number of bytes in which *part* of a parameter of machine
-   mode MODE and tree type TYPE (which may be NULL if the type is not known).
-   If the argument fits entirely in the argument registers, or entirely on
-   the stack, then 0 is returned.
-   CUM is the number of argument registers already used by earlier
-   parameters to the function.  */
-
-static int
-mist32_arg_partial_bytes (CUMULATIVE_ARGS *cum, enum machine_mode mode,
-			  tree type, bool named ATTRIBUTE_UNUSED)
-{
-  int words;
-  unsigned int size =
-    (((mode == BLKmode && type)
-      ? (unsigned int) int_size_in_bytes (type)
-      : GET_MODE_SIZE (mode)) + UNITS_PER_WORD - 1)
-    / UNITS_PER_WORD;
-
-  if (*cum >= MAX_ARGS_IN_REGISTERS)
-    words = 0;
-  else if (*cum + size > MAX_ARGS_IN_REGISTERS)
-    words = (*cum + size) - MAX_ARGS_IN_REGISTERS;
-  else
-    words = 0;
-
-  return words * UNITS_PER_WORD;
-}
-
-static void
-mist32_setup_incoming_varargs (CUMULATIVE_ARGS *cum, enum machine_mode mode,
-			       tree type, int *pretend_size, int no_rtl)
-{
-  int first_anon_arg;
-
-  if (no_rtl)
-    return;
-
-  /* All BLKmode values are passed by reference.  */
-  gcc_assert (mode != BLKmode);
-
-  first_anon_arg = (ROUND_ADVANCE_CUM (*cum, mode, type)
-		    + ROUND_ADVANCE_ARG (mode, type));
-
-  if (first_anon_arg < MAX_ARGS_IN_REGISTERS)
-    {
-      /* Note that first_reg_offset < MAX_ARGS_IN_REGISTERS.  */
-      int first_reg_offset = GP_ARG_FIRST + first_anon_arg;
-      /* Size in words to "pretend" allocate.  */
-      int size = MAX_ARGS_IN_REGISTERS - first_anon_arg;
-      rtx regblock;
-
-      regblock = gen_frame_mem (BLKmode,
-				plus_constant (arg_pointer_rtx,
-					       FIRST_PARM_OFFSET (0)));
-      set_mem_alias_set (regblock, get_varargs_alias_set ());
-      move_block_from_reg (first_reg_offset, regblock, size);
-
-      *pretend_size = (size * UNITS_PER_WORD);
-    }
-}
-
-static rtx
-mist32_function_arg (CUMULATIVE_ARGS *cum, enum machine_mode mode,
-		   const_tree type ATTRIBUTE_UNUSED,
-		   bool named ATTRIBUTE_UNUSED)
-{
-  return (PASS_IN_REG_P (*cum, mode, type)
-	  ? gen_rtx_REG (mode, GP_ARG_FIRST + 
-			 ROUND_ADVANCE_CUM (*cum, mode, type))
-	  : NULL_RTX);
-}
-
-/* Update the data in CUM to advance over an argument
-   of mode MODE and data type TYPE.
-   (TYPE is null for libcalls where that information may not be available.)  */
-
-static void
-mist32_function_arg_advance (CUMULATIVE_ARGS *cum, enum machine_mode mode,
-			   const_tree type, bool named ATTRIBUTE_UNUSED)
-{
-  *cum = (ROUND_ADVANCE_CUM (*cum, mode, type)
-	  + ROUND_ADVANCE_ARG (mode, type));
-}
-
-#undef TARGET_CAN_ELIMINATE
-#define TARGET_CAN_ELIMINATE mist32_can_eliminate
-
-/* Worker function for TARGET_CAN_ELIMINATE.  */
-
-bool
-mist32_can_eliminate (const int from ATTRIBUTE_UNUSED, const int to)
-{
-  return (from == ARG_POINTER_REGNUM && to == STACK_POINTER_REGNUM
-          ? ! frame_pointer_needed
-          : true);
-}
-
-/* Type of function DECL.
-
-   The result is cached.  To reset the cache at the end of a function,
-   call with DECL = NULL_TREE.  */
-
-enum mist32_function_type
-mist32_compute_function_type (tree decl)
-{
-  /* Cached value.  */
-  static enum mist32_function_type fn_type = MIST32_FUNCTION_UNKNOWN;
-  /* Last function we were called for.  */
-  static tree last_fn = NULL_TREE;
-
-  /* Resetting the cached value?  */
-  if (decl == NULL_TREE)
-    {
-      fn_type = MIST32_FUNCTION_UNKNOWN;
-      last_fn = NULL_TREE;
-      return fn_type;
-    }
-
-  if (decl == last_fn && fn_type != MIST32_FUNCTION_UNKNOWN)
-    return fn_type;
-
-  /* Compute function type.  */
-  fn_type = (lookup_attribute ("interrupt", DECL_ATTRIBUTES (current_function_decl)) != NULL_TREE
-	     ? MIST32_FUNCTION_INTERRUPT
-	     : MIST32_FUNCTION_NORMAL);
-
-  last_fn = decl;
-  return fn_type;
-}
+#define MUST_SAVE_RETURN_POINTER (df_regs_ever_live_p (RETURN_POINTER_REGNUM) \
+				  || crtl->profile)
 
 /* Returns the number of bytes offset between FROM_REG and TO_REG
    for the current function.  As a side effect it fills in the 
@@ -601,11 +667,6 @@ mist32_compute_frame_size (int size)	/* # of var. bytes allocated.  */
   /* Ok, we're done.  */
   return total_size;
 }
-
-#undef  TARGET_ASM_FUNCTION_PROLOGUE
-#define TARGET_ASM_FUNCTION_PROLOGUE mist32_output_function_prologue
-#undef  TARGET_ASM_FUNCTION_EPILOGUE
-#define TARGET_ASM_FUNCTION_EPILOGUE mist32_output_function_epilogue
 
 /* Expand the mist32 prologue as a series of insns.  */
 
@@ -814,30 +875,36 @@ mist32_output_function_epilogue (FILE * file,
   mist32_compute_function_type (NULL_TREE);
 }
 
-rtx
-mist32_return_addr (int count)
-{
-  if (count != 0)
-    return const0_rtx;
-
-  return get_hard_reg_initial_val (Pmode, RETURN_POINTER_REGNUM);
-}
+#undef  TARGET_ASM_FUNCTION_PROLOGUE
+#define TARGET_ASM_FUNCTION_PROLOGUE mist32_output_function_prologue
+#undef  TARGET_ASM_FUNCTION_EPILOGUE
+#define TARGET_ASM_FUNCTION_EPILOGUE mist32_output_function_epilogue
 
 #undef  TARGET_ASM_ALIGNED_HI_OP
 #define TARGET_ASM_ALIGNED_HI_OP "\t.word\t"
 #undef  TARGET_ASM_ALIGNED_SI_OP
 #define TARGET_ASM_ALIGNED_SI_OP "\t.long\t"
 
+/* Return nonzero if this function is known to have a null or 1 instruction
+   epilogue.  */
+
+int
+direct_return (void)
+{
+  if (!reload_completed)
+    return FALSE;
+
+  if (MIST32_INTERRUPT_P (mist32_compute_function_type (current_function_decl)))
+    return FALSE;
+
+  if (! current_frame_info.initialized)
+    mist32_compute_frame_size (get_frame_size ());
+
+  return current_frame_info.total_size == 0;
+}
+
 /* Trampoline */
-
-#undef TARGET_ASM_TRAMPOLINE_TEMPLATE
-#define TARGET_ASM_TRAMPOLINE_TEMPLATE mist32_asm_trampoline_template
-#undef TARGET_TRAMPOLINE_INIT
-#define TARGET_TRAMPOLINE_INIT mist32_trampoline_init
-
-#undef  TARGET_EXCEPT_UNWIND_INFO
-#define TARGET_EXCEPT_UNWIND_INFO sjlj_except_unwind_info
-
+/*
 static void
 mist32_asm_trampoline_template (FILE *f)
 {
@@ -845,8 +912,6 @@ mist32_asm_trampoline_template (FILE *f)
   fprintf (f, "\twl16\tlo(#0), %s\n", reg_names [29]);
   fprintf (f, "\tb\t%s,#AL\n", reg_names [29]);
 }
-
-/* Implement TARGET_TRAMPOLINE_INIT.  */
 
 static void
 mist32_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
@@ -862,5 +927,11 @@ mist32_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
   mem = adjust_address (m_tramp, SImode, 12);
   emit_move_insn (mem, fnaddr);
 }
+
+#undef TARGET_ASM_TRAMPOLINE_TEMPLATE
+#define TARGET_ASM_TRAMPOLINE_TEMPLATE mist32_asm_trampoline_template
+#undef TARGET_TRAMPOLINE_INIT
+#define TARGET_TRAMPOLINE_INIT mist32_trampoline_init
+*/
 
 struct gcc_target targetm = TARGET_INITIALIZER;

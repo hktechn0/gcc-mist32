@@ -1,9 +1,0 @@
-# Assemble startup files.
-
-$(T)crti.o: $(gcc_srcdir)/config/mist32/crti.asm $(GCC_PASSES)
-	$(GCC_FOR_TARGET) $(GCC_CFLAGS) $(MULTILIB_CFLAGS) $(INCLUDES) \
-	-c -o $(T)crti.o -x assembler-with-cpp $(gcc_srcdir)/config/mist32/crti.asm
-
-$(T)crtn.o: $(gcc_srcdir)/config/mist32/crtn.asm $(GCC_PASSES)
-	$(GCC_FOR_TARGET) $(GCC_CFLAGS) $(MULTILIB_CFLAGS) $(INCLUDES) \
-	-c -o $(T)crtn.o -x assembler-with-cpp $(gcc_srcdir)/config/mist32/crtn.asm

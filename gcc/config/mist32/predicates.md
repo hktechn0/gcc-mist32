@@ -50,8 +50,8 @@
 {
   if (CONST_INT_P (op)
       && !(XINT (op, 0) & 0x3)
-      && -128 <= XINT (op, 0)
-      && XINT (op, 0) <= 127)
+      && XINT (op, 0) <= 127
+      && XINT (op, 0) >= -128)
     return 1;
 
    return 0;
@@ -61,8 +61,8 @@
 {
   if (CONST_INT_P (op)
       && !(XINT (op, 0) & 0x1)
-      && -64 <= XINT (op, 0)
-      && XINT (op, 0) <= 63)
+      && XINT (op, 0) <= 63
+      && XINT (op, 0) >= -64)
     return 1;
 
    return 0;
@@ -71,8 +71,8 @@
   (match_code "const_int")
 {
   if (CONST_INT_P (op)
-      && -32 <= XINT (op, 0)
-      && XINT (op, 0) <= 31)
+      && XINT (op, 0) <= 31
+      && XINT (op, 0) >= -32)
     return 1;
 
    return 0;
@@ -129,6 +129,14 @@
   (match_code "reg,const_int")
 {
   if (GET_CODE (op) == REG || satisfies_constraint_I (op))
+    return 1;
+  return 0;
+})
+
+(define_predicate "large_const_int_operand"
+  (match_code "const_int")
+{
+  if (!satisfies_constraint_I (op) && satisfies_constraint_J (op))
     return 1;
   return 0;
 })

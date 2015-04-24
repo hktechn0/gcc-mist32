@@ -1174,7 +1174,6 @@ mist32-*-elf)
 	gas=yes
 	gnu_ld=yes
 	tm_file="dbxelf.h elfos.h newlib-stdint.h ${tm_file}"
-	extra_parts="crti.o crtn.o crtbegin.o crtend.o"
 	tmake_file="${tmake_file} mist32/t-mist32"
 	;;
 moxie-*-elf)
