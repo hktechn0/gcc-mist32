@@ -903,8 +903,8 @@ mipstx39-*-elf* | mipstx39el-*-elf*)
 	tmake_file="$tmake_file mips/t-crtstuff mips/t-mips16"
 	;;
 mist32-*-elf)
-	tmake_file="mist32/t-mist32"
-	extra_parts="crtbegin.o crtend.o crti.o crtn.o"
+	tmake_file="$tmake_file mist32/t-mist32 t-softfp-sfdf t-softfp-excl t-softfp"
+	extra_parts="$extra_parts crti.o crtn.o"
 	;;
 mmix-knuth-mmixware)
 	extra_parts="crti.o crtn.o crtbegin.o crtend.o"

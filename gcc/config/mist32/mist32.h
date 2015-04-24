@@ -31,8 +31,6 @@
       builtin_define_std ("MIST32");		\
     }						\
 
-#define TARGET_VERSION fprintf (stderr, " (mist32)");
-
 /* Use crt0/crtinit/crtfini files.  */
 #undef  STARTFILE_SPEC
 #define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
@@ -47,7 +45,6 @@
 #define LINK_SPEC "%{h*} %{v:-V} \
 		   %{static:-Bstatic} %{shared:-shared} %{symbolic:-Bsymbolic}"
 #endif
-
 
 /* Target machine storage layout */
 #define BITS_BIG_ENDIAN 0
@@ -105,56 +102,17 @@
 /* All accesses must be aligned.  */
 #define STRICT_ALIGNMENT 1
 
-/* Define this if you wish to imitate the way many other C compilers
-   handle alignment of bitfields and the structures that contain
-   them.
-
-   The behavior is that the type written for a bit-field (`int',
-   `short', or other integer type) imposes an alignment for the
-   entire structure, as if the structure really did contain an
-   ordinary field of that type.  In addition, the bit-field is placed
-   within the structure so that it would fit within such a field,
-   not crossing a boundary for it.
-
-   Thus, on most machines, a bit-field whose type is written as `int'
-   would not cross a four-byte boundary, and would force four-byte
-   alignment for the whole structure.  (The alignment used may not
-   be four bytes; it is controlled by the other alignment
-   parameters.)
-
-   If the macro is defined, its definition should be a C expression;
-   a nonzero value for the expression enables this behavior.  */
-
+/* Look at the fundamental type that is used for a bit-field and use 
+   that to impose alignment on the enclosing structure.
+   struct s {int a:8}; should have same alignment as "int", not "char".  */
 #define PCC_BITFIELD_TYPE_MATTERS 1
 
-/* If defined, a C expression to compute the alignment given to a
-   constant that is being placed in memory.  CONSTANT is the constant
-   and ALIGN is the alignment that the object would ordinarily have.
-   The value of this macro is used instead of that alignment to align
-   the object.
-
-   If this macro is not defined, then ALIGN is used.
-
-   The typical use of this macro is to increase alignment for string
-   constants to be word aligned so that `strcpy' calls that copy
-   constants can be done inline.  */
-
+/* Make strings word-aligned so strcpy from constants will be faster.  */
 #define CONSTANT_ALIGNMENT(EXP, ALIGN)					\
   ((TREE_CODE (EXP) == STRING_CST  || TREE_CODE (EXP) == CONSTRUCTOR)	\
    && (ALIGN) < BITS_PER_WORD ? BITS_PER_WORD : (ALIGN))
 
-/* If defined, a C expression to compute the alignment for a static
-   variable.  TYPE is the data type, and ALIGN is the alignment that
-   the object would ordinarily have.  The value of this macro is used
-   instead of that alignment to align the object.
-
-   If this macro is not defined, then ALIGN is used.
-
-   One use of this macro is to increase alignment of medium-size
-   data to make it all fit in fewer cache lines.  Another is to
-   cause character arrays to be word-aligned so that `strcpy' calls
-   that copy constants to character arrays can be done inline.  */
-
+/* Make arrays of chars word-aligned for the same reasons.  */
 #undef DATA_ALIGNMENT
 #define DATA_ALIGNMENT(TYPE, ALIGN)					\
   ((((ALIGN) < BITS_PER_WORD)						\
@@ -181,7 +139,6 @@
    the value is constrained to be within the bounds of the declared
    type, but kept valid in the wider mode.  The signedness of the
    extension may differ from that of the type.  */
-
 #define PROMOTE_MODE(MODE, UNSIGNEDP, TYPE)	\
   if (GET_MODE_CLASS (MODE) == MODE_INT		\
       && GET_MODE_SIZE (MODE) < UNITS_PER_WORD) \
@@ -190,11 +147,10 @@
         (UNSIGNEDP) = 0;                        \
       (MODE) = Pmode;                           \
     }
-
+
 /* Standard register usage.  */
 
 /* Number of hardware registers.  We have:
-
    - 32 integer registers
    - condition code
    - stack pointer
@@ -262,26 +218,6 @@
 #define RETURN_POINTER_REGNUM 31
 
 #define GPR_P(REGNO)   (IN_RANGE_P ((REGNO), GP_REG_FIRST, GP_REG_LAST))
-
-/* Define the classes of registers for register constraints in the
-   machine description.  Also define ranges of constants.
-
-   One of the classes must always be named ALL_REGS and include all hard regs.
-   If there is more than one class, another class must be named NO_REGS
-   and contain no registers.
-
-   The name GENERAL_REGS must be the name of a class (or an alias for
-   another name such as ALL_REGS).  This is the class of registers
-   that is allowed by "g" or "r" in a register constraint.
-   Also, registers outside this class are allocated only when
-   instructions express preferences for them.
-
-   The classes must be numbered in nondecreasing order; that is,
-   a larger-numbered class must never be contained completely
-   in a smaller-numbered class.
-
-   For any two classes, it is very desirable that there be another
-   class that represents their union.  */
 
 enum reg_class
 {
@@ -306,17 +242,6 @@ enum reg_class
   "ALL_REGS"								\
 }
 
-/* An initializer containing the contents of the register classes,
-   as integers which are bit masks.  The Nth integer specifies the
-   contents of class N.  The way the integer MASK is interpreted is
-   that register R is in the class if `MASK & (1 << R)' is 1.
-
-   When the machine has more than 32 registers, an integer does not
-   suffice.  Then the integers are replaced by sub-initializers,
-   braced groupings containing several integers.  Each
-   sub-initializer must be suitable as an initializer for the type
-   `HARD_REG_SET' which is defined in `hard-reg-set.h'.  */
-
 #define REG_CLASS_CONTENTS						\
 {									\
   { 0x00000000, 0x00000000 },	/* NO_REGS */				\
@@ -330,9 +255,8 @@ enum reg_class
    REGNO.  In general there is more than one such class; choose a class which
    is "minimal", meaning that no smaller class also contains the register.  */
 #define REGNO_REG_CLASS(REGNO) 			\
-  ( (REGNO) < 32 ? GR_REGS :			\
-    ((REGNO) == 33 ? SP_REG			\
-     : ALL_REGS))
+  ((0 < (REGNO) && (REGNO)) < 32 ? GR_REGS :	\
+   ((REGNO) == 33 ? SP_REG : ALL_REGS))
 
 /* A macro whose definition is the name of the class to which a
    valid base register must belong.  A base register is one used in
@@ -383,29 +307,6 @@ enum reg_class
 #define STARTING_FRAME_OFFSET 0
 
 /* Eliminating the Frame Pointer and the Arg Pointer.  */ 
-
-/* If defined, this macro specifies a table of register pairs used to eliminate
-   unneeded registers that point into the stack frame.  If it is not defined,
-   the only elimination attempted by the compiler is to replace references to
-   the frame pointer with references to the stack pointer.
-
-   The definition of this macro is a list of structure initializations, each of
-   which specifies an original and replacement register.
-
-   On some machines, the position of the argument pointer is not known until
-   the compilation is completed.  In such a case, a separate hard register must
-   be used for the argument pointer.  This register can be eliminated by
-   replacing it with either the frame pointer or the argument pointer,
-   depending on whether or not the frame pointer has been eliminated.
-
-   In this case, you might specify:
-        #define ELIMINABLE_REGS  \
-        {{ARG_POINTER_REGNUM, STACK_POINTER_REGNUM}, \
-         {ARG_POINTER_REGNUM, FRAME_POINTER_REGNUM}, \
-         {FRAME_POINTER_REGNUM, STACK_POINTER_REGNUM}}
-
-   Note that the elimination of the argument pointer with the stack pointer is
-   specified first since that is the preferred elimination.  */
 
 #define ELIMINABLE_REGS				\
 {						\
@@ -477,36 +378,15 @@ enum reg_class
   ((IN_RANGE((N), GP_ARG_FIRST, GP_ARG_LAST))			\
    && !fixed_regs[N])
 
-/* A C type for declaring a variable that is used as the first argument of
-   `FUNCTION_ARG' and other related values.  For some target machines, the type
-   `int' suffices and can hold the number of bytes of argument so far.
-
-   There is no need to record in `CUMULATIVE_ARGS' anything about the arguments
-   that have been passed on the stack.  The compiler has other variables to
-   keep track of that.  For target machines on which all arguments are passed
-   on the stack, there is no need to store anything in `CUMULATIVE_ARGS';
-   however, the data structure must exist and should not be empty, so use
-   `int'.  */
+/* A C type for declaring a variable that is used as the first
+   argument of `FUNCTION_ARG' and other related values.  */
 #define CUMULATIVE_ARGS int
 
-/* A C statement (sans semicolon) for initializing the variable CUM for the
-   state at the beginning of the argument list.  The variable has type
-   `CUMULATIVE_ARGS'.  The value of FNTYPE is the tree node for the data type
-   of the function which will receive the args, or 0 if the args are to a
-   compiler support library function.  The value of INDIRECT is nonzero when
-   processing an indirect call, for example a call through a function pointer.
-   The value of INDIRECT is zero for a call to an explicitly named function, a
-   library function call, or when `INIT_CUMULATIVE_ARGS' is used to find
-   arguments for the function being compiled.
-
-   When processing a call to a compiler support library function, LIBNAME
-   identifies which one.  It is a `symbol_ref' rtx which contains the name of
-   the function, as a string.  LIBNAME is 0 when an ordinary C function call is
-   being processed.  Thus, each time this macro is called, either LIBNAME or
-   FNTYPE is nonzero, but never both of them at once.  */
+/* A C statement (sans semicolon) for initializing the variable CUM
+   for the state at the beginning of the argument list.  */
 #define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, INDIRECT, N_NAMED_ARGS) \
   (CUM) = 0
-
+
 /* Maximum number of registers that can appear in a valid memory address.  */
 #define MAX_REGS_PER_ADDRESS 1
 
@@ -520,6 +400,7 @@ enum reg_class
 /* Max number of bytes we can move from memory
    to memory in one reasonably fast instruction.  */
 #define MOVE_MAX UNITS_PER_WORD
+#define TRULY_NOOP_TRUNCATION(OUTPREC, INPREC) 1
 
 /* Specify the machine mode that pointers have.
    After generation of rtl, the compiler makes no further distinction
@@ -532,19 +413,6 @@ enum reg_class
    for both 32-bit and 64-bit targets.  */
 #define FUNCTION_MODE SImode
 
-/* A C expression which is nonzero if on this machine it is safe to "convert"
-   an integer of INPREC bits to one of OUTPREC bits (where OUTPREC is smaller
-   than INPREC) by merely operating on it as if it had only OUTPREC bits.
-
-   On many machines, this expression can be 1.
-
-   When `TRULY_NOOP_TRUNCATION' returns 1 for a pair of sizes for modes for
-   which `MODES_TIEABLE_P' is 0, suboptimal code can result.  If this is the
-   case, making `TRULY_NOOP_TRUNCATION' return 0 in such cases may improve
-   things.  */
-#define TRULY_NOOP_TRUNCATION(OUTPREC, INPREC) 1
-
-
 /* Control the assembler format that we output.  */
 #define REGISTER_NAMES							\
 { "r0",   "r1",   "r2",   "r3",   "r4",     "r5",   "r6",   "rtmp",	\
@@ -581,26 +449,7 @@ enum reg_class
    ? GPR_P (REGNO) || (REGNO) == ARG_POINTER_REGNUM	\
    : GPR_P (reg_renumber[REGNO]))
 
-/* A C expression which is nonzero if register number NUM is suitable for use
-   as an index register in operand addresses.  It may be either a suitable hard
-   register or a pseudo register that has been allocated such a hard register.
-
-   The difference between an index register and a base register is that the
-   index register may be scaled.  If an address involves the sum of two
-   registers, neither one of them scaled, then either one may be labeled the
-   "base" and the other the "index"; but whichever labeling is used must fit
-   the machine's constraints of which registers may serve in each capacity.
-   The compiler will try both labelings, looking for one that is valid, and
-   will reload one or both registers only if neither labeling works.  */
 #define REGNO_OK_FOR_INDEX_P(REGNO) 0
-
-/* A C expression that is nonzero if it is desirable to choose register
-   allocation so as to avoid move instructions between a value of mode MODE1
-   and a value of mode MODE2.
-
-   If `HARD_REGNO_MODE_OK (R, MODE1)' and `HARD_REGNO_MODE_OK (R, MODE2)' are
-   ever different for any R, then `MODES_TIEABLE_P (MODE1, MODE2)' must be
-   zero.  */
 
 /* Tie QI/HI/SI modes together.  */
 #define MODES_TIEABLE_P(MODE1, MODE2)			\
@@ -618,21 +467,10 @@ enum reg_class
 #define ASM_OUTPUT_ALIGN(STREAM,LOG)		\
   fprintf (STREAM, "\t.align\t%d\n", LOG)
 
-
-/* Define this macro as a C expression which is nonzero if accessing less than
-   a word of memory (i.e. a `char' or a `short') is no faster than accessing a
-   word of memory, i.e., if such access require more than one instruction or if
-   there is no difference in cost between byte and (aligned) word loads.
-
-   When this macro is not defined, the compiler will access a field by finding
-   the smallest containing object; when it is defined, a fullword load will be
-   used if alignment permits.  Unless bytes accesses are faster than word
-   accesses, using word accesses is preferable since it may eliminate
-   subsequent memory access if subsequent accesses occur to other fields in the
-   same word of the structure, but to different bytes.  */
 #define SLOW_BYTE_ACCESS 1
 
-
+/* The Overall Framework of an Assembler File */
+
 #undef  ASM_SPEC
 
 /* Section selection.  */
@@ -660,24 +498,13 @@ enum reg_class
 #define ASM_APP_OFF "#NO_APP\n"
 #endif
 
-
 #undef SIZE_TYPE
 #define SIZE_TYPE "unsigned int"
 
 #undef PTRDIFF_TYPE
 #define PTRDIFF_TYPE "int"
 
-/* A C statement or compound statement to output to FILE some assembler code to
-   call the profiling subroutine `mcount'.  Before calling, the assembler code
-   must load the address of a counter variable into a register where `mcount'
-   expects to find the address.  The name of this variable is `LP' followed by
-   the number LABELNO, so you would generate the name using `LP%d' in a
-   `fprintf'.
-
-   The details of how the address should be passed to `mcount' are determined
-   by your operating system environment, not by GCC.  To figure them out,
-   compile a small program for profiling using the system's installed C
-   compiler and look at the assembler code that results.  */
+/* Generating Code for Profiling */
 #define FUNCTION_PROFILER(FILE, LABELNO)	\
 {						\
   fprintf (FILE, "\t push rret\n" );		\
@@ -697,34 +524,18 @@ enum reg_class
    the trampoline is also aligned on a 32bit boundary.  */
 #define TRAMPOLINE_ALIGNMENT 32
 
-#define INCOMING_RETURN_ADDR_RTX   gen_rtx_REG (Pmode, RETURN_POINTER_REGNUM)
+#define INCOMING_RETURN_ADDR_RTX gen_rtx_REG (Pmode, RETURN_POINTER_REGNUM)
 
 #define MASK_RETURN_ADDR GEN_INT (-3)
 
-/* Addressing modes, and classification of registers for them.  */
+/* Describe how we implement __builtin_eh_return.  */
+#define EH_RETURN_DATA_REGNO(N)	((N) < 4 ? (N+2) : INVALID_REGNUM)
 
-/* Maximum number of registers that can appear in a valid memory address.  */
-#define MAX_REGS_PER_ADDRESS 1
-
-/* Recognize any constant value that is a valid address.  */
-#define CONSTANT_ADDRESS_P(X)		\
-  (GET_CODE (X) == LABEL_REF		\
-   || GET_CODE (X) == SYMBOL_REF	\
-   || CONST_INT_P (X)			\
-   || GET_CODE (X) == CONST)
-
-/* Nonzero if the constant value X is a legitimate general operand.
-   We don't allow (plus symbol large-constant) as the relocations can't
-   describe it.  INTVAL > 32767 handles both 16-bit and 24-bit relocations.
-   We allow all CONST_DOUBLE's as the md file patterns will force the
-   constant to memory if they can't handle them.  */
-
-#define LEGITIMATE_CONSTANT_P(X)					\
-  (! (GET_CODE (X) == CONST						\
-      && GET_CODE (XEXP (X, 0)) == PLUS					\
-      && (GET_CODE (XEXP (XEXP (X, 0), 0)) == SYMBOL_REF || GET_CODE (XEXP (XEXP (X, 0), 0)) == LABEL_REF) \
-      && CONST_INT_P (XEXP (XEXP (X, 0), 1))				\
-      && (unsigned HOST_WIDE_INT) INTVAL (XEXP (XEXP (X, 0), 1)) > 0x3ff))
+/* Store the return handler into the call frame.  */
+/* FIXME: ??? */
+#define EH_RETURN_HANDLER_RTX						\
+  gen_frame_mem (Pmode,							\
+		 plus_constant (Pmode, frame_pointer_rtx, UNITS_PER_WORD))
 
 /* mist32 function types.  */
 enum mist32_function_type
@@ -733,5 +544,11 @@ enum mist32_function_type
 };
 
 #define MIST32_INTERRUPT_P(TYPE) ((TYPE) == MIST32_FUNCTION_INTERRUPT)
+
+#define CONSTANT_ADDRESS_P(X)		    \
+  (GET_CODE (X) == LABEL_REF		    \
+   || GET_CODE (X) == SYMBOL_REF	    \
+   || CONST_INT_P (X)			    \
+   || GET_CODE (X) == CONST)
 
 #endif /* GCC_MIST32_H */
