@@ -67,9 +67,9 @@
 #define LONG_TYPE_SIZE 32
 #define LONG_LONG_TYPE_SIZE 64
 
-/*#define FLOAT_TYPE_SIZE 32
+#define FLOAT_TYPE_SIZE 32
 #define DOUBLE_TYPE_SIZE 64
-#define LONG_DOUBLE_TYPE_SIZE 128*/
+#define LONG_DOUBLE_TYPE_SIZE DOUBLE_TYPE_SIZE
 
 /* Define the sizes of fixed-point types.  */
 #define SHORT_FRACT_TYPE_SIZE 8
