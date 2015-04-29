@@ -2,7 +2,7 @@
 # Configuration validation subroutine script.
 #   Copyright 1992-2013 Free Software Foundation, Inc.
 
-timestamp='2013-10-01'
+timestamp='2015-04-29'
 
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -289,6 +289,7 @@ case $basic_machine in
 	| mipsisa64sr71k | mipsisa64sr71kel \
 	| mipsr5900 | mipsr5900el \
 	| mipstx39 | mipstx39el \
+	| mist32 \
 	| mn10200 | mn10300 \
 	| moxie \
 	| mt \
@@ -408,6 +409,7 @@ case $basic_machine in
 	| mipsisa64sr71k-* | mipsisa64sr71kel-* \
 	| mipsr5900-* | mipsr5900el-* \
 	| mipstx39-* | mipstx39el-* \
+	| mist32-* \
 	| mmix-* \
 	| mt-* \
 	| msp430-* \
