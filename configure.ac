@@ -1239,6 +1239,9 @@ case "${target}" in
   mips*-*-*)
     noconfigdirs="$noconfigdirs gprof"
     ;;
+  mist32-*-elf*)
+    noconfigdirs="$noconfigdirs gdb"
+    ;;
   nds32*-*-*)
     noconfigdirs="$noconfigdirs gdb"
     ;;
