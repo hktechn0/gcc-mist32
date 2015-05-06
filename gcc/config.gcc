@@ -1183,6 +1183,9 @@ frv-*-*linux*)
 	         gnu-user.h linux.h glibc-stdint.h frv/linux.h"
 	tmake_file="${tmake_file} frv/t-frv frv/t-linux"
 	;;
+mist32-*-elf)
+	tm_file="dbxelf.h elfos.h newlib-stdint.h ${tm_file}"
+	;;
 moxie-*-elf)
 	gas=yes
 	gnu_ld=yes
