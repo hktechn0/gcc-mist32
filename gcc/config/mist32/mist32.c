@@ -23,6 +23,8 @@
 #include "coretypes.h"
 #include "tm.h"
 #include "tree.h"
+#include "stor-layout.h"
+#include "calls.h"
 #include "rtl.h"
 #include "regs.h"
 #include "hard-reg-set.h"
@@ -339,49 +341,11 @@ mist32_legitimate_constant_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx x)
 #undef TARGET_LEGITIMATE_CONSTANT_P
 #define TARGET_LEGITIMATE_CONSTANT_P mist32_legitimate_constant_p
 
-/*
-#undef  TARGET_MEMORY_MOVE_COST
-#define TARGET_MEMORY_MOVE_COST mist32_memory_move_cost
-#undef  TARGET_RTX_COSTS
-#define TARGET_RTX_COSTS mist32_rtx_costs
-#undef  TARGET_ADDRESS_COST
-#define TARGET_ADDRESS_COST hook_int_rtx_bool_0
-*/
-
-#undef  TARGET_PROMOTE_PROTOTYPES
-#define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_true
-
-/*
-#undef TARGET_CONDITIONAL_REGISTER_USAGE
-#define TARGET_CONDITIONAL_REGISTER_USAGE mist32_conditional_register_usage
-*/
-
-/* The ROUND_ADVANCE* macros are local to this file.  */
-/* Round SIZE up to a word boundary.  */
-#define ROUND_ADVANCE(SIZE)				\
-  (((SIZE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
-
-/* Round arg MODE/TYPE up to the next word boundary.  */
-#define ROUND_ADVANCE_ARG(MODE, TYPE)				\
-  ((MODE) == BLKmode						\
-   ? ROUND_ADVANCE ((unsigned int) int_size_in_bytes (TYPE))	\
-   : ROUND_ADVANCE ((unsigned int) GET_MODE_SIZE (MODE)))
-
-/* Round CUM up to the necessary point for argument MODE/TYPE.  */
-#define ROUND_ADVANCE_CUM(CUM, MODE, TYPE) (CUM)
-
-/* Return boolean indicating arg of type TYPE and mode MODE will be passed in
-   a reg.  This includes arguments that have to be passed by reference as the
-   pointer to them is passed in a reg if one is available (and that is what
-   we're given).
-   This macro is only used in this file.  */
-#define PASS_IN_REG_P(CUM, MODE, TYPE) \
-  (ROUND_ADVANCE_CUM ((CUM), (MODE), (TYPE)) < MAX_ARGS_IN_REGISTERS)
-
-/* Return nonzero if TYPE must be passed by indirect reference.  */
+/* Return non-zero if the function argument described by TYPE is to be
+   passed by reference.  */
 
 static bool
-mist32_pass_by_reference (cumulative_args_t ca ATTRIBUTE_UNUSED,
+mist32_pass_by_reference (cumulative_args_t cum_v ATTRIBUTE_UNUSED,
 			  enum machine_mode mode, const_tree type,
 			  bool named ATTRIBUTE_UNUSED)
 {
@@ -392,7 +356,7 @@ mist32_pass_by_reference (cumulative_args_t ca ATTRIBUTE_UNUSED,
   else
     size = GET_MODE_SIZE (mode);
 
-  return (size < 0 || size > 4);
+  return (size < 0 || size > 8);
 }
 
 static bool
@@ -404,46 +368,100 @@ mist32_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
 }
 
 /* Forward declaration.  */
-static void mist32_setup_incoming_varargs (cumulative_args_t, enum machine_mode,
-					   tree, int *, int);
 static rtx mist32_function_arg (cumulative_args_t, enum machine_mode,
 				const_tree, bool);
 static void mist32_function_arg_advance (cumulative_args_t, enum machine_mode,
 					 const_tree, bool);
 
-/* Returns the number of bytes in which *part* of a parameter of machine
-   mode MODE and tree type TYPE (which may be NULL if the type is not known).
-   If the argument fits entirely in the argument registers, or entirely on
-   the stack, then 0 is returned.
-   CUM is the number of argument registers already used by earlier
-   parameters to the function.  */
+/* Some function arguments will only partially fit in the registers
+   that hold arguments.  Given a new arg, return the number of bytes
+   that fit in argument passing registers.  */
 
 static int
 mist32_arg_partial_bytes (cumulative_args_t cum_v, enum machine_mode mode,
-			  tree type, bool named ATTRIBUTE_UNUSED)
+			  tree type, bool named)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
-  int words;
-  unsigned int size =
-    (((mode == BLKmode && type)
-      ? (unsigned int) int_size_in_bytes (type)
-      : GET_MODE_SIZE (mode)) + UNITS_PER_WORD - 1)
-    / UNITS_PER_WORD;
+  int bytes_left, size;
 
-  if (*cum >= MAX_ARGS_IN_REGISTERS)
-    words = 0;
-  else if (*cum + size > MAX_ARGS_IN_REGISTERS)
-    words = (*cum + size) - MAX_ARGS_IN_REGISTERS;
+  if (*cum > GP_ARG_LAST)
+    return 0;
+
+  if (mist32_pass_by_reference (cum_v, mode, type, named))
+    size = 4;
+  else if (type)
+    {
+      if (AGGREGATE_TYPE_P (type))
+	return 0;
+      size = int_size_in_bytes (type);
+    }
   else
-    words = 0;
+    size = GET_MODE_SIZE (mode);
 
-  return words * UNITS_PER_WORD;
+  bytes_left = (UNITS_PER_WORD * MAX_ARGS_IN_REGISTERS) - ((*cum - GP_ARG_FIRST) * UNITS_PER_WORD);
+
+  if (size > bytes_left)
+    return bytes_left;
+  else
+    return 0;
 }
 
-static void
-mist32_setup_incoming_varargs (cumulative_args_t cum, enum machine_mode mode,
-			       tree type, int *pretend_size, int no_rtl)
+/* Return the next register to be used to hold a function argument or
+   NULL_RTX if there's no more space.  */
+
+static rtx
+mist32_function_arg (cumulative_args_t cum_v, enum machine_mode mode,
+		     const_tree type ATTRIBUTE_UNUSED,
+		     bool named ATTRIBUTE_UNUSED)
 {
+  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
+
+  return (*cum <= GP_ARG_LAST
+	  ? gen_rtx_REG (mode, *cum)
+	  : NULL_RTX);
+}
+
+#define MIST32_FUNCTION_ARG_SIZE(MODE, TYPE)	\
+  ((MODE) != BLKmode ? GET_MODE_SIZE (MODE)	\
+   : (unsigned) int_size_in_bytes (TYPE))
+
+/* Update the data in CUM to advance over an argument
+   of mode MODE and data type TYPE.
+   (TYPE is null for libcalls where that information may not be available.)  */
+
+static void
+mist32_function_arg_advance (cumulative_args_t cum_v, enum machine_mode mode,
+			     const_tree type, bool named ATTRIBUTE_UNUSED)
+{
+  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
+
+  *cum = (*cum <= GP_ARG_LAST
+	  ? *cum + ((UNITS_PER_WORD - 1 + MIST32_FUNCTION_ARG_SIZE (mode, type)) / UNITS_PER_WORD)
+	  : *cum);
+}
+
+#undef  TARGET_PROMOTE_PROTOTYPES
+#define TARGET_PROMOTE_PROTOTYPES hook_bool_const_tree_true
+
+#undef  TARGET_RETURN_IN_MEMORY
+#define TARGET_RETURN_IN_MEMORY mist32_return_in_memory
+
+#undef  TARGET_MUST_PASS_IN_STACK
+#define TARGET_MUST_PASS_IN_STACK must_pass_in_stack_var_size
+#undef  TARGET_PASS_BY_REFERENCE
+#define TARGET_PASS_BY_REFERENCE mist32_pass_by_reference
+#undef  TARGET_ARG_PARTIAL_BYTES
+#define TARGET_ARG_PARTIAL_BYTES mist32_arg_partial_bytes
+#undef  TARGET_FUNCTION_ARG
+#define TARGET_FUNCTION_ARG mist32_function_arg
+#undef  TARGET_FUNCTION_ARG_ADVANCE
+#define TARGET_FUNCTION_ARG_ADVANCE mist32_function_arg_advance
+
+static void
+mist32_setup_incoming_varargs (cumulative_args_t cum_v, enum machine_mode mode,
+			       tree type ATTRIBUTE_UNUSED, int *pretend_size, int no_rtl)
+{
+  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
   int first_anon_arg;
 
   if (no_rtl)
@@ -452,15 +470,14 @@ mist32_setup_incoming_varargs (cumulative_args_t cum, enum machine_mode mode,
   /* All BLKmode values are passed by reference.  */
   gcc_assert (mode != BLKmode);
 
-  first_anon_arg = (ROUND_ADVANCE_CUM (*get_cumulative_args (cum), mode, type)
-		    + ROUND_ADVANCE_ARG (mode, type));
+  first_anon_arg = *cum + ((GET_MODE_SIZE (mode) + UNITS_PER_WORD - 1) / UNITS_PER_WORD);
 
-  if (first_anon_arg < MAX_ARGS_IN_REGISTERS)
+  if (first_anon_arg <= GP_ARG_LAST)
     {
-      /* Note that first_reg_offset < MAX_ARGS_IN_REGISTERS.  */
-      int first_reg_offset = GP_ARG_FIRST + first_anon_arg;
+      /* Note that first_reg_offset <= GP_ARG_LAST.  */
+      int first_reg_offset = first_anon_arg;
       /* Size in words to "pretend" allocate.  */
-      int size = MAX_ARGS_IN_REGISTERS - first_anon_arg;
+      int size = (GP_ARG_LAST + 1) - first_reg_offset;
       rtx regblock;
 
       regblock = gen_frame_mem (BLKmode,
@@ -473,53 +490,8 @@ mist32_setup_incoming_varargs (cumulative_args_t cum, enum machine_mode mode,
     }
 }
 
-
-/* Return the next register to be used to hold a function argument or
-   NULL_RTX if there's no more space.  */
-
-static rtx
-mist32_function_arg (cumulative_args_t cum_v, enum machine_mode mode,
-		     const_tree type ATTRIBUTE_UNUSED,
-		     bool named ATTRIBUTE_UNUSED)
-{
-  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
-
-  return (PASS_IN_REG_P (*cum, mode, type)
-	  ? gen_rtx_REG (mode, GP_ARG_FIRST + 
-			 ROUND_ADVANCE_CUM (*cum, mode, type))
-	  : NULL_RTX);
-}
-
-/* Update the data in CUM to advance over an argument
-   of mode MODE and data type TYPE.
-   (TYPE is null for libcalls where that information may not be available.)  */
-
-static void
-mist32_function_arg_advance (cumulative_args_t cum_v, enum machine_mode mode,
-			     const_tree type, bool named ATTRIBUTE_UNUSED)
-{
-  CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
-
-  *cum = (ROUND_ADVANCE_CUM (*cum, mode, type)
-	  + ROUND_ADVANCE_ARG (mode, type));
-}
-
-
-#undef  TARGET_RETURN_IN_MEMORY
-#define TARGET_RETURN_IN_MEMORY mist32_return_in_memory
-
 #undef  TARGET_SETUP_INCOMING_VARARGS
 #define TARGET_SETUP_INCOMING_VARARGS mist32_setup_incoming_varargs
-#undef  TARGET_MUST_PASS_IN_STACK
-#define TARGET_MUST_PASS_IN_STACK must_pass_in_stack_var_size
-#undef  TARGET_PASS_BY_REFERENCE
-#define TARGET_PASS_BY_REFERENCE mist32_pass_by_reference
-#undef  TARGET_ARG_PARTIAL_BYTES
-#define TARGET_ARG_PARTIAL_BYTES mist32_arg_partial_bytes
-#undef  TARGET_FUNCTION_ARG
-#define TARGET_FUNCTION_ARG mist32_function_arg
-#undef  TARGET_FUNCTION_ARG_ADVANCE
-#define TARGET_FUNCTION_ARG_ADVANCE mist32_function_arg_advance
 
 /* Worker function for TARGET_CAN_ELIMINATE.  */
 
