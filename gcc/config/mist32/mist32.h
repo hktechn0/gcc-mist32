@@ -96,8 +96,19 @@
 /* Every structure's size must be a multiple of this.  */
 #define STRUCTURE_SIZE_BOUNDARY 8
 
-/* There is no point aligning anything to a rounder boundary than this.  */
-#define BIGGEST_ALIGNMENT LONG_LONG_TYPE_SIZE
+/* No data type wants to be aligned rounder than this.  */
+#define BIGGEST_ALIGNMENT 32
+
+/* The best alignment to use in cases where we have a choice.  */
+#define FASTEST_ALIGNMENT 32
+
+/* Define this macro to the minimum alignment enforced by hardware
+   for the stack pointer on this machine.  The definition is a C
+   expression for the desired alignment (measured in bits).  */
+#define STACK_BOUNDARY 32
+
+/* ALIGN FRAMES on word boundaries */
+#define MIST32_STACK_ALIGN(LOC) (((LOC) + 3) & ~ 3)
 
 /* All accesses must be aligned.  */
 #define STRICT_ALIGNMENT 1
@@ -181,7 +192,6 @@
 
 /* Internal macros to classify a register number as to whether it's a
    general purpose register, or a status register.  */
-
 #define GP_REG_FIRST 0
 #define GP_REG_LAST  31
 #define GP_REG_NUM   (GP_REG_LAST - GP_REG_FIRST + 1)
@@ -213,7 +223,7 @@
 #define GLOBAL_POINTER_REGNUM (GP_REG_FIRST + 28)
 
 /* The following a fake hard registers that describe some of the dedicated
-   registers on the FR30.  */
+   registers on the MIST32.  */
 #define CONDITION_CODE_REGNUM 32
 #define RETURN_POINTER_REGNUM 31
 
@@ -276,13 +286,13 @@ enum reg_class
 {								\
   /* Call-clobbered GPRs.  */					\
   7, 0, 1, 2, 3, 4, 5, 6,					\
-  /* Return pointer  */						\
-  31,								\
   /* Call-saved GPRs.  */					\
   8, 9, 10, 11, 12, 13, 14, 15,					\
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,		\
   /* global pointer, base pointer */				\
   29, 30,							\
+  /* Return pointer  */						\
+  31,								\
   /* cc, Stack pointer, arg pointer  */ 			\
   32, 33, 34							\
 }
@@ -341,19 +351,6 @@ enum reg_class
 /* The argument pointer always points to the first argument.  */
 #define FIRST_PARM_OFFSET(FNDECL) 0
 
-/* Define this if it is the responsibility of the caller to
-   allocate the area reserved for arguments passed in registers.
-   If `ACCUMULATE_OUTGOING_ARGS' is also defined, the only effect
-   of this macro is to determine whether the space is included in
-   `crtl->outgoing_args_size'.  */
-#define OUTGOING_REG_PARM_STACK_SPACE(FNTYPE) 1
-
-#define STACK_BOUNDARY 32
-
-/* ALIGN FRAMES on word boundaries */
-#define MIST32_STACK_ALIGN(LOC) (((LOC) + 3) & ~ 3)
-
-
 /* Symbolic macros for the registers used to return integer and floating
    point values.  */
 #define GP_RETURN (GP_REG_FIRST + 0)
@@ -370,10 +367,7 @@ enum reg_class
 */
 
 /* A C expression that is nonzero if REGNO is the number of a hard register in
-   which function arguments are sometimes passed.  This does *not* include
-   implicit arguments such as the static chain and the structure-value address.
-   On many machines, no registers can be used for this purpose since all
-   function arguments are pushed on the stack.  */
+   which function arguments are sometimes passed. */
 #define FUNCTION_ARG_REGNO_P(N)					\
   ((IN_RANGE((N), GP_ARG_FIRST, GP_ARG_LAST))			\
    && !fixed_regs[N])
@@ -385,7 +379,7 @@ enum reg_class
 /* A C statement (sans semicolon) for initializing the variable CUM
    for the state at the beginning of the argument list.  */
 #define INIT_CUMULATIVE_ARGS(CUM, FNTYPE, LIBNAME, INDIRECT, N_NAMED_ARGS) \
-  (CUM) = 0
+  (CUM = GP_ARG_FIRST)
 
 /* Maximum number of registers that can appear in a valid memory address.  */
 #define MAX_REGS_PER_ADDRESS 1
@@ -397,8 +391,9 @@ enum reg_class
 /* Define this as 1 if `char' should by default be signed; else as 0.  */
 #define DEFAULT_SIGNED_CHAR 1
 
-/* Max number of bytes we can move from memory
-   to memory in one reasonably fast instruction.  */
+/* The maximum number of bytes that a single instruction can move
+   quickly between memory and registers or between two memory
+   locations.  */
 #define MOVE_MAX UNITS_PER_WORD
 #define TRULY_NOOP_TRUNCATION(OUTPREC, INPREC) 1
 
