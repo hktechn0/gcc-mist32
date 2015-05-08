@@ -200,7 +200,7 @@
 (define_insn "*movqi_insn"
   [(set (match_operand:QI 0 "register_operand" "=r,r")
 	(match_operand:QI 1 "general_operand"   "r,J"))]
-  ""
+  "register_operand (operands[0], QImode) || register_operand (operands[1], QImode)"
   "@
    move\t%0, %1
    lil\t%0, %1"
@@ -253,7 +253,7 @@
 (define_insn "*movhi_insn"
   [(set (match_operand:HI 0 "register_operand" "=r,r,r")
 	(match_operand:HI 1 "general_operand"   "r,J,K"))]
-  ""
+  "register_operand (operands[0], HImode) || register_operand (operands[1], HImode)"
   "@
    move\t%0, %1
    lil\t%0, %1
@@ -288,15 +288,6 @@
   }
 }
 ")
-
-(define_expand "movsi_split"
-  [(set (match_operand:SI 0 "register_operand" "")
-	(high:SI (match_operand:SI 1 "lih_wl16_operand" "")))
-   (set (match_dup 0)
-	(lo_sum:SI (match_dup 0) (match_dup 1)))]
-  ""
-  ""
-)
 
 (define_insn "*movepc"
   [(set (match_operand:SI 0 "register_operand" "=r")
@@ -336,6 +327,20 @@
   "std32\t%2, %0, %1"
 )
 
+(define_insn "*loadsi_mem"
+  [(set (match_operand:SI         0 "register_operand" "=r")
+	(mem:SI (match_operand:SI 1 "register_operand" "r")))]
+  ""
+  "ld32\t%0, %1"
+)
+
+(define_insn "*storesi_mem"
+  [(set (mem:SI (match_operand:SI 0 "register_operand" "r"))
+	(match_operand:SI         1 "register_operand" "r"))]
+  ""
+  "st32\t%1, %0"
+)
+
 (define_insn "set_hi_si"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(high:SI (match_operand 1 "lih_wl16_operand" "g")))]
@@ -349,6 +354,15 @@
 		   (match_operand:SI 2 "lih_wl16_operand" "g")))]
   ""
   "wl16\t%0, lo(%2)"
+)
+
+(define_expand "movsi_split"
+  [(set (match_operand:SI 0 "register_operand" "")
+	(high:SI (match_operand:SI 1 "lih_wl16_operand" "")))
+   (set (match_dup 0)
+	(lo_sum:SI (match_dup 0) (match_dup 1)))]
+  ""
+  ""
 )
 
 (define_split
@@ -376,24 +390,11 @@
   ""
 )
 
-(define_insn "*loadsi_mem"
-  [(set (match_operand:SI         0 "register_operand" "=r")
-	(mem:SI (match_operand:SI 1 "register_operand" "r")))]
-  ""
-  "ld32\t%0, %1"
-)
-
-(define_insn "*storesi_mem"
-  [(set (mem:SI (match_operand:SI 0 "register_operand" "r"))
-	(match_operand:SI         1 "register_operand" "r"))]
-  ""
-  "st32\t%1, %0"
-)
-
+; FIXME: stack pointer oprations may remove
 (define_insn "*movsi_insn"
   [(set (match_operand:SI 0 "register_operand" "=r,r,r,r,r,k,r")
 	(match_operand:SI 1 "general_operand"  "r,J,K,L,k,r,R"))]
-  ""
+  "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
   "@
    move\t%0, %1
    lil\t%0, %1

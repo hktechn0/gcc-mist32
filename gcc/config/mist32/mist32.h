@@ -145,20 +145,6 @@
 /* Define if loading short immediate values into registers sign extends.  */
 #define SHORT_IMMEDIATES_SIGN_EXTEND
 
-/* Define this macro if it is advisable to hold scalars in registers
-   in a wider mode than that declared by the program.  In such cases,
-   the value is constrained to be within the bounds of the declared
-   type, but kept valid in the wider mode.  The signedness of the
-   extension may differ from that of the type.  */
-#define PROMOTE_MODE(MODE, UNSIGNEDP, TYPE)	\
-  if (GET_MODE_CLASS (MODE) == MODE_INT		\
-      && GET_MODE_SIZE (MODE) < UNITS_PER_WORD) \
-    {                                           \
-      if ((MODE) == SImode)                     \
-        (UNSIGNEDP) = 0;                        \
-      (MODE) = Pmode;                           \
-    }
-
 /* Standard register usage.  */
 
 /* Number of hardware registers.  We have:
@@ -511,16 +497,14 @@ enum reg_class
   fprintf (FILE, "\t pop rret\n" );		\
 }
 
-/* A C expression for the size in bytes of the trampoline, as an integer.  */
-#define TRAMPOLINE_SIZE 12
-
-/* We want the trampoline to be aligned on a 32bit boundary so that we can
-   make sure the location of the static chain & target function within
-   the trampoline is also aligned on a 32bit boundary.  */
+/* Trampoline */
+#define TRAMPOLINE_SIZE (4 * 5)
 #define TRAMPOLINE_ALIGNMENT 32
 
-#define INCOMING_RETURN_ADDR_RTX gen_rtx_REG (Pmode, RETURN_POINTER_REGNUM)
+#define STATIC_CHAIN_REGNUM 0
 
+/* Return Address */
+#define INCOMING_RETURN_ADDR_RTX gen_rtx_REG (Pmode, RETURN_POINTER_REGNUM)
 #define MASK_RETURN_ADDR GEN_INT (-3)
 
 /* Describe how we implement __builtin_eh_return.  */
