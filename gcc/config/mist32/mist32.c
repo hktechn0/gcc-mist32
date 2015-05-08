@@ -22,8 +22,19 @@
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
+#include "hash-set.h"
+#include "machmode.h"
+#include "vec.h"
+#include "double-int.h"
+#include "input.h"
+#include "alias.h"
+#include "symtab.h"
+#include "wide-int.h"
+#include "inchash.h"
 #include "tree.h"
 #include "stor-layout.h"
+#include "varasm.h"
+#include "stringpool.h"
 #include "calls.h"
 #include "rtl.h"
 #include "regs.h"
@@ -31,19 +42,39 @@
 #include "insn-config.h"
 #include "conditions.h"
 #include "output.h"
+#include "dbxout.h"
 #include "insn-attr.h"
 #include "flags.h"
-#include "expr.h"
+#include "hashtab.h"
 #include "function.h"
+#include "statistics.h"
+#include "real.h"
+#include "fixed-value.h"
+#include "expmed.h"
+#include "dojump.h"
+#include "explow.h"
+#include "emit-rtl.h"
+#include "stmt.h"
+#include "expr.h"
 #include "recog.h"
 #include "diagnostic-core.h"
 #include "ggc.h"
+#include "dominance.h"
+#include "cfg.h"
+#include "cfgrtl.h"
+#include "cfganal.h"
+#include "lcm.h"
+#include "cfgbuild.h"
+#include "cfgcleanup.h"
+#include "predict.h"
+#include "basic-block.h"
 #include "df.h"
 #include "tm_p.h"
 #include "target.h"
 #include "target-def.h"
 #include "tm-constrs.h"
 #include "opts.h"
+#include "builtins.h"
 
 /* The value of TARGET_ATTRIBUTE_TABLE.  */
 static const struct attribute_spec mist32_attribute_table[] = {
@@ -68,7 +99,7 @@ mist32_function_value (const_tree valtype,
 }
 
 static rtx
-mist32_libcall_value (enum machine_mode mode,
+mist32_libcall_value (machine_mode mode,
 		      const_rtx fun ATTRIBUTE_UNUSED)
 {
   return gen_rtx_REG (mode, GP_RETURN);
@@ -257,18 +288,19 @@ mist32_print_operand_address (FILE *stream, rtx address)
 #define TARGET_PRINT_OPERAND_ADDRESS mist32_print_operand_address
 
 static bool
-mist32_legitimate_address_p (enum machine_mode mode, rtx x, bool strict)
+mist32_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x, bool strict)
 {
   if (! REG_P (x))
     return false;
+
   if (strict)
     {
-      if (GPR_P (x))
+      if (GPR_P (REGNO (x)))
 	return true;
     }
   else
     {
-      if (GPR_P (x)
+      if (GPR_P (REGNO (x))
 	  || REGNO (x) == ARG_POINTER_REGNUM
 	  || ! HARD_REGISTER_P (x))
 	return true;
@@ -311,7 +343,7 @@ mist32_legitimate_address_p (enum machine_mode mode, rtx x, bool strict)
 }
 
 static bool
-mist32_legitimate_constant_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx x)
+mist32_legitimate_constant_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x)
 {
   return (! (GET_CODE (x) == CONST
 	     && GET_CODE (XEXP (x, 0)) == PLUS
@@ -346,7 +378,7 @@ mist32_legitimate_constant_p (enum machine_mode mode ATTRIBUTE_UNUSED, rtx x)
 
 static bool
 mist32_pass_by_reference (cumulative_args_t cum_v ATTRIBUTE_UNUSED,
-			  enum machine_mode mode, const_tree type,
+			  machine_mode mode, const_tree type,
 			  bool named ATTRIBUTE_UNUSED)
 {
   int size;
@@ -368,9 +400,9 @@ mist32_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
 }
 
 /* Forward declaration.  */
-static rtx mist32_function_arg (cumulative_args_t, enum machine_mode,
+static rtx mist32_function_arg (cumulative_args_t, machine_mode,
 				const_tree, bool);
-static void mist32_function_arg_advance (cumulative_args_t, enum machine_mode,
+static void mist32_function_arg_advance (cumulative_args_t, machine_mode,
 					 const_tree, bool);
 
 /* Some function arguments will only partially fit in the registers
@@ -378,7 +410,7 @@ static void mist32_function_arg_advance (cumulative_args_t, enum machine_mode,
    that fit in argument passing registers.  */
 
 static int
-mist32_arg_partial_bytes (cumulative_args_t cum_v, enum machine_mode mode,
+mist32_arg_partial_bytes (cumulative_args_t cum_v, machine_mode mode,
 			  tree type, bool named)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
@@ -410,7 +442,7 @@ mist32_arg_partial_bytes (cumulative_args_t cum_v, enum machine_mode mode,
    NULL_RTX if there's no more space.  */
 
 static rtx
-mist32_function_arg (cumulative_args_t cum_v, enum machine_mode mode,
+mist32_function_arg (cumulative_args_t cum_v, machine_mode mode,
 		     const_tree type ATTRIBUTE_UNUSED,
 		     bool named ATTRIBUTE_UNUSED)
 {
@@ -430,7 +462,7 @@ mist32_function_arg (cumulative_args_t cum_v, enum machine_mode mode,
    (TYPE is null for libcalls where that information may not be available.)  */
 
 static void
-mist32_function_arg_advance (cumulative_args_t cum_v, enum machine_mode mode,
+mist32_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
 			     const_tree type, bool named ATTRIBUTE_UNUSED)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
@@ -458,7 +490,7 @@ mist32_function_arg_advance (cumulative_args_t cum_v, enum machine_mode mode,
 #define TARGET_FUNCTION_ARG_ADVANCE mist32_function_arg_advance
 
 static void
-mist32_setup_incoming_varargs (cumulative_args_t cum_v, enum machine_mode mode,
+mist32_setup_incoming_varargs (cumulative_args_t cum_v, machine_mode mode,
 			       tree type ATTRIBUTE_UNUSED, int *pretend_size, int no_rtl)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
@@ -876,34 +908,43 @@ direct_return (void)
 }
 
 /* Trampoline */
-/*
 static void
 mist32_asm_trampoline_template (FILE *f)
 {
-  fprintf (f, "\tlih\thi(#0), %s\n", reg_names [29]);
-  fprintf (f, "\twl16\tlo(#0), %s\n", reg_names [29]);
-  fprintf (f, "\tb\t%s,#AL\n", reg_names [29]);
+  /* static chain pointer */
+  fprintf (f, "\twl16\t%s, 0\n", reg_names [STATIC_CHAIN_REGNUM]);
+  fprintf (f, "\tlih\t%s, 0\n", reg_names [STATIC_CHAIN_REGNUM]);
+
+  /* jump to real nested function */
+  fprintf (f, "\twl16\t%s, 0\n", reg_names [TMP_REGNUM]);
+  fprintf (f, "\tlih\t%s, 0\n", reg_names [TMP_REGNUM]);
+  fprintf (f, "\tb\t%s, #al\n", reg_names [TMP_REGNUM]);
 }
 
 static void
 mist32_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
 {
-  rtx fnaddr = XEXP (DECL_RTL (fndecl), 0);
-  rtx mem;
+  rtx mem, fnaddr = XEXP (DECL_RTL (fndecl), 0);
 
   emit_block_move (m_tramp, assemble_trampoline_template (),
 		   GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
 
-  mem = adjust_address (m_tramp, SImode, 4);
+  /* store static chain pointer */
+  mem = adjust_address (m_tramp, HImode, 2);
   emit_move_insn (mem, chain_value);
-  mem = adjust_address (m_tramp, SImode, 12);
+  mem = adjust_address (m_tramp, HImode, 6);
+  emit_move_insn (mem, gen_rtx_LSHIFTRT (SImode, chain_value, GEN_INT (16)));
+
+  /* store real function address */
+  mem = adjust_address (m_tramp, HImode, 10);
   emit_move_insn (mem, fnaddr);
+  mem = adjust_address (m_tramp, HImode, 14);
+  emit_move_insn (mem, gen_rtx_LSHIFTRT (SImode, fnaddr, GEN_INT (16)));
 }
 
 #undef TARGET_ASM_TRAMPOLINE_TEMPLATE
 #define TARGET_ASM_TRAMPOLINE_TEMPLATE mist32_asm_trampoline_template
 #undef TARGET_TRAMPOLINE_INIT
 #define TARGET_TRAMPOLINE_INIT mist32_trampoline_init
-*/
 
 struct gcc_target targetm = TARGET_INITIALIZER;
