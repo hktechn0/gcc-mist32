@@ -907,7 +907,27 @@ direct_return (void)
   return current_frame_info.total_size == 0;
 }
 
-/* Trampoline */
+/*
+  Condition Code
+*/
+
+/* FIXME: This hooks seems not to be used */
+
+static bool
+mist32_fixed_condition_code_regs (unsigned int *p1, unsigned int *p2)
+{
+  *p1 = CONDITION_CODE_REGNUM;
+  *p2 = INVALID_REGNUM;
+  return true;
+}
+
+#undef	TARGET_FIXED_CONDITION_CODE_REGS
+#define	TARGET_FIXED_CONDITION_CODE_REGS mist32_fixed_condition_code_regs
+
+/*
+  Trampoline
+*/
+
 static void
 mist32_asm_trampoline_template (FILE *f)
 {
@@ -946,5 +966,44 @@ mist32_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
 #define TARGET_ASM_TRAMPOLINE_TEMPLATE mist32_asm_trampoline_template
 #undef TARGET_TRAMPOLINE_INIT
 #define TARGET_TRAMPOLINE_INIT mist32_trampoline_init
+
+/*
+  Instruction Scheduling
+*/
+
+static int
+mist32_issue_rate (void)
+{
+  /* FIXME: MIST1032ISA (In-order) core is single issue. */
+  return 2;
+}
+
+#undef TARGET_SCHED_ISSUE_RATE
+#define TARGET_SCHED_ISSUE_RATE mist32_issue_rate
+
+/* Compare insn and branch insn must be adjacent in mist32 */
+/* FIXME: This hooks seems not to be used */
+
+static bool
+mist32_macro_fusion_pair_p (rtx_insn* prev, rtx_insn* curr)
+{
+  rtx prev_set = single_set(prev);
+
+  if(!prev_set)
+    return false;
+
+  if (any_condjump_p (curr)) {
+    rtx cc_reg_1 = gen_rtx_REG (CCmode, CONDITION_CODE_REGNUM);
+    if (modified_in_p (cc_reg_1, prev_set))
+      return true;
+  }
+
+  return false;
+}
+
+#undef TARGET_SCHED_MACRO_FUSION_P
+#define TARGET_SCHED_MACRO_FUSION_P hook_bool_void_true
+#undef TARGET_SCHED_MACRO_FUSION_PAIR_P
+#define TARGET_SCHED_MACRO_FUSION_PAIR_P mist32_macro_fusion_pair_p
 
 struct gcc_target targetm = TARGET_INITIALIZER;
