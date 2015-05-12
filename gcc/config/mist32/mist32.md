@@ -608,6 +608,50 @@
    umod\t%0, %2"
 )
 
+;; Max, Min
+
+;; Unsigned
+(define_insn "smaxsi3"
+  [(set (match_operand:SI 0 "register_operand"         "=r,r")
+	(smax:SI (match_operand:SI 1 "register_operand" "%0,0")
+		 (match_operand:SI 2 "nonmemory_operand" "r,I")))]
+  ""
+  "@
+   max\t%0, %2
+   max\t%0, %2"
+)
+
+(define_insn "sminsi3"
+  [(set (match_operand:SI 0 "register_operand"         "=r,r")
+	(smin:SI (match_operand:SI 1 "register_operand" "%0,0")
+		 (match_operand:SI 2 "nonmemory_operand" "r,I")))]
+  ""
+  "@
+   min\t%0, %2
+   min\t%0, %2"
+)
+
+;; Unsigned
+(define_insn "umaxsi3"
+  [(set (match_operand:SI 0 "register_operand"         "=r,r")
+	(umax:SI (match_operand:SI 1 "register_operand" "%0,0")
+		 (match_operand:SI 2 "nonmemory_operand" "r,K")))]
+  ""
+  "@
+   umax\t%0, %2
+   umax\t%0, %2"
+)
+
+(define_insn "uminsi3"
+  [(set (match_operand:SI 0 "register_operand"         "=r,r")
+	(umin:SI (match_operand:SI 1 "register_operand" "%0,0")
+		 (match_operand:SI 2 "nonmemory_operand" "r,K")))]
+  ""
+  "@
+   umin\t%0, %2
+   umin\t%0, %2"
+)
+
 ;; -------------------------------------------------------------------------
 ;; Shift operators
 ;; -------------------------------------------------------------------------
