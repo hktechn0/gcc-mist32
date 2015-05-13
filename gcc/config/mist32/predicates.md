@@ -43,6 +43,9 @@
 (define_predicate "stack_pointer_operand"
   (and (match_code "reg")
        (match_test "REGNO (op) == STACK_POINTER_REGNUM")))
+(define_predicate "register_operand_not_sp"
+  (and (match_code "reg")
+       (match_test "REGNO (op) != STACK_POINTER_REGNUM")))
 
 ;; Return true if OP is load/store with displacement
 (define_predicate "disp8_operand"
@@ -133,7 +136,15 @@
   return 0;
 })
 
-(define_predicate "large_const_int_operand"
+(define_predicate "small_stack_offset_operand"
+  (match_code "const_int")
+{
+  if (satisfies_constraint_I (op))
+    return 1;
+  return 0;
+})
+
+(define_predicate "large_stack_offset_operand"
   (match_code "const_int")
 {
   if (!satisfies_constraint_I (op) && satisfies_constraint_J (op))

@@ -85,11 +85,31 @@
   "pop\t%0"
 )
 
-; add stack pointer split
+;; Stack pointer calculation
+
+;; Add stack pointer
+(define_insn "add_stack_pointer"
+  [(set (reg:SI STACK_POINTER_REGNUM)
+	(plus:SI (reg:SI STACK_POINTER_REGNUM)
+		 (match_operand:SI 0 "const_int_operand" "N")))]
+  ""
+  "srspadd\t%0"
+)
+
+;; reg = sp + const_int : split insn
+(define_insn "*add_reg_sp_insn"
+  [(set (match_operand:SI 0 "register_operand_not_sp" "=r")
+	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "%k")
+		 (match_operand:SI 2 "nonmemory_operand" "rJ")))]
+  ""
+  "#"
+)
+
+;; Add stack pointer with register
 (define_split
   [(set (match_operand:SI 0 "stack_pointer_operand" "")
 	(plus:SI (match_dup 0)
-		 (match_operand:SI 1 "nonmemory_operand" "")))]
+		 (match_operand:SI 1 "register_operand" "")))]
   ""
   [(set (match_dup 2) (match_dup 0))
    (set (match_dup 2) (plus:SI (match_dup 2) (match_dup 1)))
@@ -98,68 +118,49 @@
 { operands[2] = gen_rtx_REG (Pmode, TMP_REGNUM); }
 ")
 
-; sub stack pointer split
+;; reg = sp + reg or const_int : split pattern
 (define_split
-  [(set (match_operand:SI 0 "stack_pointer_operand" "")
-	(minus:SI (match_dup 0)
-		  (match_operand:SI 1 "nonmemory_operand" "")))]
+  [(set (match_operand:SI 0 "register_operand_not_sp" "")
+	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "")
+		 (match_dup 0)))]
   ""
-  [(set (match_dup 2) (match_dup 0))
-   (set (match_dup 2) (minus:SI (match_dup 2) (match_dup 1)))
-   (set (match_dup 0) (match_dup 2))]
+  [(set (match_dup 2) (match_dup 1))
+   (set (match_dup 0) (plus:SI (match_dup 0) (match_dup 2)))]
   "
 { operands[2] = gen_rtx_REG (Pmode, TMP_REGNUM); }
 ")
 
-(define_expand "add_stack_pointer"
-  [(set (reg:SI STACK_POINTER_REGNUM)
-	(plus:SI (reg:SI STACK_POINTER_REGNUM)
-		 (match_operand:SI 0 "nonmemory_operand" "")))]
-  ""
-  "
-{
-  if (! o2_i11_operand (operands[0], SImode)) {
-    if(! (reload_in_progress || reload_completed))
-      operands[0] = force_reg (SImode, operands[0]);
-  }
-}
-")
-
-(define_expand "sub_stack_pointer"
-  [(set (reg:SI STACK_POINTER_REGNUM)
-	(minus:SI (reg:SI STACK_POINTER_REGNUM)
-		  (match_operand:SI 0 "nonmemory_operand" "")))]
-  ""
-  "
-{
-  if (! o2_i11_operand (operands[0], SImode)) {
-    if(! (reload_in_progress || reload_completed))
-      operands[0] = force_reg (SImode, operands[0]);
-  }
-}
-")
-
-; add stack pointer with large integer
-; FIXME: why not eliminate argument pointer without this?
 (define_split
-  [(set (match_operand:SI 0 "register_operand" "")
+  [(set (match_operand:SI 0 "register_operand_not_sp" "")
 	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "")
-		 (match_operand:SI 2 "large_const_int_operand" "")))]
+		 (match_operand:SI 2 "register_operand_not_sp" "")))]
+  "REGNO (operands[0]) != REGNO (operands[2])"
+  [(set (match_dup 0) (match_dup 1))
+   (set (match_dup 0) (plus:SI (match_dup 0) (match_dup 2)))]
   ""
-  [(set (match_dup 3) (match_dup 1))
-   (set (match_dup 0) (match_dup 2))
+)
+
+(define_split
+  [(set (match_operand:SI 0 "register_operand_not_sp" "")
+	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "")
+		 (match_operand:SI 2 "small_stack_offset_operand" "")))]
+  ""
+  [(set (match_dup 0) (match_dup 1))
+   (set (match_dup 0) (plus:SI (match_dup 0) (match_dup 2)))]
+  ""
+)
+
+(define_split
+  [(set (match_operand:SI 0 "register_operand_not_sp" "")
+	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "")
+		 (match_operand:SI 2 "large_stack_offset_operand" "")))]
+  ""
+  [(set (match_dup 0) (match_dup 1))
+   (set (match_dup 3) (match_dup 2))
    (set (match_dup 0) (plus:SI (match_dup 0) (match_dup 3)))]
   "
 { operands[3] = gen_rtx_REG (Pmode, TMP_REGNUM); }
 ")
-
-(define_insn "*add_stack_pointer_with_large_int"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "")
-		 (match_operand:SI 2 "large_const_int_operand" "i")))]
-  ""
-  "#"
-)
 
 ;; -------------------------------------------------------------------------
 ;; Move instruction
@@ -307,20 +308,6 @@
 		 (match_operand 1 "immediate_operand" "I")))]
   ""
   "movepc\t%0, %1"
-)
-
-(define_insn "load_stack_pointer"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(reg:SI STACK_POINTER_REGNUM))]
-  ""
-  "srspr\t%0"
-)
-
-(define_insn "save_stack_pointer"
-  [(set (reg:SI STACK_POINTER_REGNUM)
-	(match_operand:SI 0 "register_operand" "r"))]
-  ""
-  "srspw\t%0"
 )
 
 (define_insn "*loadsi_disp"
@@ -493,14 +480,13 @@
 )
 
 (define_insn "*addsi3_insn"
-  [(set (match_operand:SI 0 "register_operand" "=r,r,k")
-	(plus:SI (match_operand:SI 1 "register_operand" "%0,0,0")
-		 (match_operand:SI 2 "o2_i11_operand" "r,I,rI")))]
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(plus:SI (match_operand:SI 1 "register_operand" "%0,0")
+		 (match_operand:SI 2 "o2_i11_operand" "r,I")))]
   ""
   "@
    add\t%0, %2
-   add\t%0, %2
-   #"
+   add\t%0, %2"
 )
 
 ;; Subtraction
@@ -528,14 +514,13 @@
 )
 
 (define_insn "*subsi3_insn"
-  [(set (match_operand:SI 0 "register_operand" "=r,r,k")
-	(minus:SI (match_operand:SI 1 "register_operand" "0,0,0")
-		  (match_operand:SI 2 "o2_i11_operand" "r,I,rI")))]
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(minus:SI (match_operand:SI 1 "register_operand" "0,0")
+		  (match_operand:SI 2 "o2_i11_operand" "r,I")))]
   ""
   "@
    sub\t%0, %2
-   sub\t%0, %2
-   #"
+   sub\t%0, %2"
 )
 
 ;; Multiplication 
