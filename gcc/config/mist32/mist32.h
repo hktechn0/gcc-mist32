@@ -213,6 +213,10 @@
 #define CONDITION_CODE_REGNUM 32
 #define RETURN_POINTER_REGNUM 31
 
+/* The limited value of stack pointer addition immediate */
+#define STACK_POINTER_ADD_MAX (0x7fff << 2)
+#define STACK_POINTER_SUB_MAX (0x8000 << 2)
+
 #define GPR_P(REGNO)   (IN_RANGE_P ((REGNO), GP_REG_FIRST, GP_REG_LAST))
 
 enum reg_class

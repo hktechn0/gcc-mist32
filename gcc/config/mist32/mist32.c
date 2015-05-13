@@ -695,7 +695,7 @@ mist32_expand_prologue (void)
       /* Use a HOST_WIDE_INT temporary, since negating an unsigned int gives
 	 the wrong result on a 64-bit host.  */
       HOST_WIDE_INT pretend_size = current_frame_info.pretend_size;
-      emit_insn (gen_sub_stack_pointer (GEN_INT (pretend_size)));
+      emit_insn (gen_add_stack_pointer (GEN_INT (- pretend_size)));
     }
 
   /* Save any registers we need to and set up fp.  */
@@ -720,23 +720,23 @@ mist32_expand_prologue (void)
 		- (current_frame_info.pretend_size
 		   + current_frame_info.reg_size));
 
+  /* Is frame_size word aligned? */
+  gcc_assert (! (frame_size & 0x3));
+
   if (frame_size == 0)
     ; /* Nothing to do.  */
-  else if (frame_size <= 0x3ff)
-    emit_insn (gen_sub_stack_pointer (GEN_INT (frame_size)));
+  else if (frame_size <= STACK_POINTER_SUB_MAX)
+    emit_insn (gen_add_stack_pointer (GEN_INT (- frame_size)));
   else
     {
       int remaining = frame_size;
-
-      emit_insn (gen_movsi (gen_rtx_REG (Pmode, TMP_REGNUM), stack_pointer_rtx));
       while(remaining > 0)
 	{
-	  emit_insn (gen_subsi3 (gen_rtx_REG (Pmode, TMP_REGNUM),
-				 gen_rtx_REG (Pmode, TMP_REGNUM),
-				 GEN_INT ((remaining > 0x3ff) ? 0x3ff : remaining)));
-	  remaining -= 0x3ff;
+	  int offset;
+	  offset = remaining > STACK_POINTER_SUB_MAX ? STACK_POINTER_SUB_MAX : remaining;
+	  emit_insn (gen_add_stack_pointer (GEN_INT (- offset)));
+	  remaining -= offset;
 	}
-      emit_insn (gen_movsi (stack_pointer_rtx, gen_rtx_REG (Pmode, TMP_REGNUM)));
     }
 
   if (frame_pointer_needed)
@@ -816,26 +816,26 @@ mist32_expand_epilogue (void)
 	{
 	  unsigned int reg_offset = var_size + args_size;
 
+	  /* Is reg_offset word aligned? */
+	  gcc_assert (! (reg_offset & 0x3));
+
 	  if (frame_pointer_needed)
 	    emit_insn (gen_movsi (stack_pointer_rtx, frame_pointer_rtx));
 
 	  if (reg_offset == 0)
 	    ; /* Nothing to do.  */
-	  else if (reg_offset <= 0x3ff)
+	  else if (reg_offset <= STACK_POINTER_ADD_MAX)
 	    emit_insn (gen_add_stack_pointer (GEN_INT (reg_offset)));
 	  else
 	    {
 	      int remaining = reg_offset;
-
-	      emit_insn (gen_movsi (gen_rtx_REG (Pmode, TMP_REGNUM), stack_pointer_rtx));
 	      while(remaining > 0)
 		{
-		  emit_insn (gen_addsi3 (gen_rtx_REG (Pmode, TMP_REGNUM),
-					 gen_rtx_REG (Pmode, TMP_REGNUM),
-					 GEN_INT ((remaining > 0x3ff) ? 0x3ff : remaining)));
-		  remaining -= 0x3ff;
+		  int offset;
+		  offset = remaining > STACK_POINTER_ADD_MAX ? STACK_POINTER_ADD_MAX : remaining;
+		  emit_insn (gen_add_stack_pointer (GEN_INT (offset)));
+		  remaining -= offset;
 		}
-	      emit_insn (gen_movsi (stack_pointer_rtx, gen_rtx_REG (Pmode, TMP_REGNUM)));
 	    }
 	}
       else

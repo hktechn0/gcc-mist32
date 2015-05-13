@@ -48,6 +48,11 @@
   (and (match_code "const_int")
        (match_test "(unsigned HOST_WIDE_INT) ival <= 0x7ff")))
 
+(define_constraint "N"
+  "18-bit signed immediate."
+  (and (match_code "const_int")
+       (match_test "ival >= -0x20000 && ival <= 0x1ffff")))
+
 (define_constraint "O"
   "constant zero"
   (and (match_code "const_int")
