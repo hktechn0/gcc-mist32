@@ -211,12 +211,14 @@
 )
 
 (define_insn "*movqi_insn"
-  [(set (match_operand:QI 0 "register_operand" "=r,r")
-	(match_operand:QI 1 "general_operand"   "r,J"))]
+  [(set (match_operand:QI 0 "register_operand" "=r,r,r,k")
+	(match_operand:QI 1 "general_operand"   "r,J,k,r"))]
   "register_operand (operands[0], QImode) || register_operand (operands[1], QImode)"
   "@
    move\t%0, %1
-   lil\t%0, %1"
+   lil\t%0, %1
+   srspr\t%0
+   srspw\t%1"
 )
 
 ;; HI mode
@@ -264,13 +266,15 @@
 )
 
 (define_insn "*movhi_insn"
-  [(set (match_operand:HI 0 "register_operand" "=r,r,r")
-	(match_operand:HI 1 "general_operand"   "r,J,K"))]
+  [(set (match_operand:HI 0 "register_operand" "=r,r,r,r,k")
+	(match_operand:HI 1 "general_operand"   "r,J,K,k,r"))]
   "register_operand (operands[0], HImode) || register_operand (operands[1], HImode)"
   "@
    move\t%0, %1
    lil\t%0, %1
-   ulil\t%0, %1"
+   ulil\t%0, %1
+   srspr\t%0
+   srspw\t%1"
 )
 
 ;; SI mode
