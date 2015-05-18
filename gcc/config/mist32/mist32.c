@@ -928,42 +928,69 @@ mist32_fixed_condition_code_regs (unsigned int *p1, unsigned int *p2)
   Trampoline
 */
 
-static void
-mist32_asm_trampoline_template (FILE *f)
-{
-  /* static chain pointer */
-  fprintf (f, "\twl16\t%s, 0\n", reg_names [STATIC_CHAIN_REGNUM]);
-  fprintf (f, "\tlih\t%s, 0\n", reg_names [STATIC_CHAIN_REGNUM]);
-
-  /* jump to real nested function */
-  fprintf (f, "\twl16\t%s, 0\n", reg_names [TMP_REGNUM]);
-  fprintf (f, "\tlih\t%s, 0\n", reg_names [TMP_REGNUM]);
-  fprintf (f, "\tb\t%s, #al\n", reg_names [TMP_REGNUM]);
-}
+#define GEN_RTX_MIST32_I16_OPERAND(value)				\
+  (gen_rtx_AND (SImode,							\
+		gen_rtx_IOR (SImode,					\
+			     gen_rtx_ASHIFT (SImode,			\
+					     value, GEN_INT (5)),	\
+			     gen_rtx_AND (SImode,			\
+					  value, GEN_INT (0x1f))),	\
+		GEN_INT (0x1f | (0xffe0 << 5))))
 
 static void
 mist32_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
 {
-  rtx mem, fnaddr = XEXP (DECL_RTL (fndecl), 0);
+  rtx mem, hi, lo;
+  rtx fnaddr = XEXP (DECL_RTL (fndecl), 0);
 
-  emit_block_move (m_tramp, assemble_trampoline_template (),
-		   GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
+  const unsigned int lih_insn = 0x0ee00000;
+  const unsigned int wl16_insn = 0x0d400000;
+  const unsigned int branch_insn = 0x144000e0;
 
-  /* store static chain pointer */
-  mem = adjust_address (m_tramp, HImode, 2);
-  emit_move_insn (mem, chain_value);
-  mem = adjust_address (m_tramp, HImode, 6);
-  emit_move_insn (mem, gen_rtx_LSHIFTRT (SImode, chain_value, GEN_INT (16)));
+  /*
+    mist32 trampoline template:
 
-  /* store real function address */
-  mem = adjust_address (m_tramp, HImode, 10);
-  emit_move_insn (mem, fnaddr);
-  mem = adjust_address (m_tramp, HImode, 14);
-  emit_move_insn (mem, gen_rtx_LSHIFTRT (SImode, fnaddr, GEN_INT (16)));
+    lih  STATIC_CHAIN_REGNUM, hi(chain_value)
+    wl16 STATIC_CHAIN_REGNUM, lo(chain_value)
+    lih  TMP_REGNUM, hi(fnaddr)
+    wl16 TMP_REGNUM, lo(fnaddr)
+    b    TMP_REGNUM, #al
+
+    mist32 instruction format <I16>
+    ((imm << 5) | (imm & 0x1f)) & i16_mask
+   */
+
+  /* load static chain pointer to STATIC_CHAIN_REG */
+  hi = gen_rtx_LSHIFTRT (SImode, chain_value, GEN_INT (16));
+  hi = GEN_RTX_MIST32_I16_OPERAND(hi);
+  hi = gen_rtx_IOR (SImode, hi, GEN_INT (lih_insn | (STATIC_CHAIN_REGNUM << 5)));
+  mem = adjust_address (m_tramp, SImode, 0);
+  emit_move_insn (mem, hi);
+
+  lo = gen_rtx_AND (SImode, chain_value, GEN_INT (0xffff));
+  lo = GEN_RTX_MIST32_I16_OPERAND(lo);
+  lo = gen_rtx_IOR (SImode, lo, GEN_INT (wl16_insn | (STATIC_CHAIN_REGNUM << 5)));
+  mem = adjust_address (m_tramp, SImode, 4);
+  emit_move_insn (mem, lo);
+
+  /* load real function address to TMP_REG */
+  hi = gen_rtx_LSHIFTRT (SImode, fnaddr, GEN_INT (16));
+  hi = GEN_RTX_MIST32_I16_OPERAND(hi);
+  hi = gen_rtx_IOR (SImode, hi, GEN_INT (lih_insn | (TMP_REGNUM << 5)));
+  mem = adjust_address (m_tramp, SImode, 8);
+  emit_move_insn (mem, hi);
+
+  lo = gen_rtx_AND (SImode, fnaddr, GEN_INT (0xffff));
+  lo = GEN_RTX_MIST32_I16_OPERAND(lo);
+  lo = gen_rtx_IOR (SImode, lo, GEN_INT (wl16_insn | (TMP_REGNUM << 5)));
+  mem = adjust_address (m_tramp, SImode, 12);
+  emit_move_insn (mem, lo);
+
+  /* jump to function */
+  mem = adjust_address (m_tramp, SImode, 16);
+  emit_move_insn (mem, GEN_INT (branch_insn));
 }
 
-#undef TARGET_ASM_TRAMPOLINE_TEMPLATE
-#define TARGET_ASM_TRAMPOLINE_TEMPLATE mist32_asm_trampoline_template
 #undef TARGET_TRAMPOLINE_INIT
 #define TARGET_TRAMPOLINE_INIT mist32_trampoline_init
 
