@@ -521,6 +521,10 @@ enum reg_class
 #define STATIC_CHAIN_REGNUM 0
 
 /* Return Address */
+#define RETURN_ADDR_RTX(COUNT, FRAME)				\
+  (count == 0							\
+   ? get_hard_reg_initial_val (Pmode, RETURN_POINTER_REGNUM)	\
+   : NULL_RTX)
 #define INCOMING_RETURN_ADDR_RTX gen_rtx_REG (Pmode, RETURN_POINTER_REGNUM)
 #define MASK_RETURN_ADDR GEN_INT (-3)
 
