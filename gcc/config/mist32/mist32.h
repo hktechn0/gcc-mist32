@@ -193,6 +193,10 @@
    function address than to call an address kept in a register.  */
 #define NO_FUNCTION_CSE 1
 
+/* Define this macro if the compiler should avoid copies to/from CCmode
+   registers. */
+#define AVOID_CCMODE_COPIES 1
+
 /* Compiler temporary register */
 #define TMP_REGNUM (GP_REG_FIRST + 7)
 
@@ -300,11 +304,20 @@ enum reg_class
 /* Some range macros.  */
 #define INT16_P(X)     ((X) >= - 0x8000 && (X) <= 0x7fff)
 
-/* Stack layout; function entry, exit and calling.  */
-#define STACK_GROWS_DOWNWARD
-#define FRAME_GROWS_DOWNWARD flag_stack_protect
+/* Define this macro if pushing a word onto the stack moves the stack
+   pointer to a smaller address.  */
+#define STACK_GROWS_DOWNWARD 1
 
-#define STARTING_FRAME_OFFSET 0
+/* Define this macro to nonzero value if the addresses of local variable slots
+   are at negative offsets from the frame pointer.  */
+#define FRAME_GROWS_DOWNWARD 0
+
+/* Offset from frame pointer to start allocating local variables at.
+   If FRAME_GROWS_DOWNWARD, this is the offset to the END of the
+   first local allocated.  Otherwise, it is the offset to the BEGINNING
+   of the first local allocated.  */
+#define STARTING_FRAME_OFFSET \
+  MIST32_STACK_ALIGN (crtl->outgoing_args_size)
 
 /* Eliminating the Frame Pointer and the Arg Pointer.  */ 
 
