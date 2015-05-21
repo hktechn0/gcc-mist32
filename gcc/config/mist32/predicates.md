@@ -136,6 +136,14 @@
   return 0;
 })
 
+(define_predicate "o2_ui11_operand"
+  (match_code "reg,const_int")
+{
+  if (GET_CODE (op) == REG || satisfies_constraint_M (op))
+    return 1;
+  return 0;
+})
+
 (define_predicate "small_stack_offset_operand"
   (match_code "const_int")
 {

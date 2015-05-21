@@ -44,7 +44,7 @@
        (match_test "(ival >> 16) >= -0x8000 && (ival >> 16) <= 0x7fff")))
 
 (define_constraint "M"
-  "11-bit unsigned immediate. (for logic?)"
+  "11-bit unsigned immediate."
   (and (match_code "const_int")
        (match_test "(unsigned HOST_WIDE_INT) ival <= 0x7ff")))
 
