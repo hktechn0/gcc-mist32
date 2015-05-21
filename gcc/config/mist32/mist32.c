@@ -388,15 +388,15 @@ mist32_pass_by_reference (cumulative_args_t cum_v ATTRIBUTE_UNUSED,
   else
     size = GET_MODE_SIZE (mode);
 
-  return (size < 0 || size > 8);
+  return (size < 0 || size > 2 * UNITS_PER_WORD);
 }
 
 static bool
 mist32_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
 {
-  cumulative_args_t dummy = pack_cumulative_args (NULL);
+  const HOST_WIDE_INT size = int_size_in_bytes (type);
 
-  return mist32_pass_by_reference (dummy, TYPE_MODE (type), type, false);
+  return (size < 0 || size > UNITS_PER_WORD);
 }
 
 /* Forward declaration.  */
