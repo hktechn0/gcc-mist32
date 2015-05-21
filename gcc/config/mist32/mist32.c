@@ -411,29 +411,24 @@ static void mist32_function_arg_advance (cumulative_args_t, machine_mode,
 
 static int
 mist32_arg_partial_bytes (cumulative_args_t cum_v, machine_mode mode,
-			  tree type, bool named)
+			  tree type, bool named ATTRIBUTE_UNUSED)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
-  int bytes_left, size;
+  unsigned int regs_left, size;
 
   if (*cum > GP_ARG_LAST)
     return 0;
 
-  if (mist32_pass_by_reference (cum_v, mode, type, named))
-    size = 4;
-  else if (type)
-    {
-      if (AGGREGATE_TYPE_P (type))
-	return 0;
-      size = int_size_in_bytes (type);
-    }
+  if (mode == BLKmode && type)
+    size = (unsigned int) int_size_in_bytes (type);
   else
     size = GET_MODE_SIZE (mode);
 
-  bytes_left = (UNITS_PER_WORD * MAX_ARGS_IN_REGISTERS) - ((*cum - GP_ARG_FIRST) * UNITS_PER_WORD);
+  size = MIST32_ROUND_WORD_UNIT (size);
+  regs_left = MAX_ARGS_IN_REGISTERS - (*cum - GP_ARG_FIRST);
 
-  if (size > bytes_left)
-    return bytes_left;
+  if (size > regs_left)
+    return regs_left * UNITS_PER_WORD;
   else
     return 0;
 }
@@ -448,14 +443,11 @@ mist32_function_arg (cumulative_args_t cum_v, machine_mode mode,
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
 
-  return (*cum <= GP_ARG_LAST
-	  ? gen_rtx_REG (mode, *cum)
-	  : NULL_RTX);
-}
+  if (*cum > GP_ARG_LAST)
+    return NULL_RTX;
 
-#define MIST32_FUNCTION_ARG_SIZE(MODE, TYPE)	\
-  ((MODE) != BLKmode ? GET_MODE_SIZE (MODE)	\
-   : (unsigned) int_size_in_bytes (TYPE))
+  return gen_rtx_REG (mode, *cum);
+}
 
 /* Update the data in CUM to advance over an argument
    of mode MODE and data type TYPE.
@@ -467,9 +459,13 @@ mist32_function_arg_advance (cumulative_args_t cum_v, machine_mode mode,
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
 
-  *cum = (*cum <= GP_ARG_LAST
-	  ? *cum + ((UNITS_PER_WORD - 1 + MIST32_FUNCTION_ARG_SIZE (mode, type)) / UNITS_PER_WORD)
-	  : *cum);
+  if (*cum > GP_ARG_LAST)
+    return;
+
+  if (mode != BLKmode)
+    *cum += MIST32_ROUND_WORD_UNIT (GET_MODE_SIZE (mode));
+  else
+    *cum += MIST32_ROUND_WORD_UNIT (int_size_in_bytes (type));
 }
 
 #undef  TARGET_PROMOTE_PROTOTYPES
@@ -502,7 +498,7 @@ mist32_setup_incoming_varargs (cumulative_args_t cum_v, machine_mode mode,
   /* All BLKmode values are passed by reference.  */
   gcc_assert (mode != BLKmode);
 
-  first_anon_arg = *cum + ((GET_MODE_SIZE (mode) + UNITS_PER_WORD - 1) / UNITS_PER_WORD);
+  first_anon_arg = *cum + MIST32_ROUND_WORD_UNIT (GET_MODE_SIZE (mode));
 
   if (first_anon_arg <= GP_ARG_LAST)
     {

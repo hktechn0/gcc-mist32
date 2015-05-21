@@ -221,7 +221,7 @@
 #define STACK_POINTER_ADD_MAX (0x7fff << 2)
 #define STACK_POINTER_SUB_MAX (0x8000 << 2)
 
-#define GPR_P(REGNO)   (IN_RANGE_P ((REGNO), GP_REG_FIRST, GP_REG_LAST))
+#define GPR_P(REGNO)   (IN_RANGE ((REGNO), GP_REG_FIRST, GP_REG_LAST))
 
 enum reg_class
 {
@@ -296,13 +296,11 @@ enum reg_class
 #define CLASS_MAX_NREGS(CLASS, MODE) \
   ((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
 
-/* Return true if a value is inside a range.  */
-#define IN_RANGE_P(VALUE, LOW, HIGH)			\
-  (((unsigned HOST_WIDE_INT)((VALUE) - (LOW)))		\
-   <= ((unsigned HOST_WIDE_INT)((HIGH) - (LOW))))
-
 /* Some range macros.  */
 #define INT16_P(X)     ((X) >= - 0x8000 && (X) <= 0x7fff)
+
+#define MIST32_ROUND_WORD_UNIT(SIZE)			\
+  (((SIZE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
 
 /* Define this macro if pushing a word onto the stack moves the stack
    pointer to a smaller address.  */
