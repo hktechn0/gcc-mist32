@@ -414,21 +414,23 @@
 ;; Unsigned conversions
 
 (define_insn "zero_extendqisi2"
-  [(set (match_operand:SI 0 "register_operand"                    "=r,r")
-	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,mT")))]
+  [(set (match_operand:SI 0 "register_operand"                    "=r,r,r")
+	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,T,m")))]
   ""
   "@
    get8\t%0, 0
-   ld8\t%0, %1"
+   ld8\t%0, %1
+   ldd8\t%0, %1"
 )
 
 (define_insn "zero_extendhisi2"
-  [(set (match_operand:SI 0 "register_operand"                "=r,r")
-	(zero_extend:SI (match_operand:HI 1 "register_operand" "0,mT")))]
+  [(set (match_operand:SI 0 "register_operand"                    "=r,r,r")
+	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,T,m")))]
   ""
   "@
    wh16\t%0, 0x0000
-   ld16\t%0, %1"
+   ld16\t%0, %1
+   ldd16\t%0, %1"
 )
 
 ;; Signed conversions

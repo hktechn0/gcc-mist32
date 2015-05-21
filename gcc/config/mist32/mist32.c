@@ -168,43 +168,6 @@ mist32_print_operand (FILE *file, rtx x, int code)
 	}
       return;
 
-    case 'A':
-      /* Print a signed byte value as an unsigned value.  */
-      if (GET_CODE (x) != CONST_INT)
-	output_operand_lossage ("mist32_print_operand: invalid operand to %%A code");
-      else
-	{
-	  HOST_WIDE_INT val;
-	  
-	  val = INTVAL (x);
-	  val &= 0xff;
-
-	  fprintf (file, HOST_WIDE_INT_PRINT_DEC, val);
-	}
-      return;
-      
-    case 'x':
-      if (GET_CODE (x) != CONST_INT
-	  || INTVAL (x) < 16
-	  || INTVAL (x) > 32)
-	output_operand_lossage ("mist32_print_operand: invalid %%x code");
-      else
-	fprintf (file, HOST_WIDE_INT_PRINT_DEC, INTVAL (x) - 16);
-      return;
-
-    case 'F':
-      if (GET_CODE (x) != CONST_DOUBLE)
-	output_operand_lossage ("mist32_print_operand: invalid %%F code");
-      else
-	{
-	  char str[30];
-
-	  real_to_decimal (str, CONST_DOUBLE_REAL_VALUE (x),
-			   sizeof (str), 0, 1);
-	  fputs (str, file);
-	}
-      return;
-      
     case 0:
       /* Handled below.  */
       break;
@@ -231,6 +194,12 @@ mist32_print_operand (FILE *file, rtx x, int code)
 	  fprintf (file, "%s", reg_names [REGNO (x0)]);
 	  break;
 	  
+	case PLUS:
+	  gcc_assert ((unsigned) REGNO (XEXP (x0, 0)) < ARRAY_SIZE (reg_names));
+	  fprintf (file, "%s, ", reg_names [REGNO (XEXP (x0, 0))]);
+	  output_addr_const (file, XEXP(x0, 1));
+	  break;
+
 	case SYMBOL_REF:
 	  output_address (x0);
 	  break;
@@ -242,21 +211,8 @@ mist32_print_operand (FILE *file, rtx x, int code)
 	  break;
 	}
       break;
-      
-    case CONST_DOUBLE :
-      /* We handle SFmode constants here as output_addr_const doesn't.  */
-      if (GET_MODE (x) == SFmode)
-	{
-	  REAL_VALUE_TYPE d;
-	  long l;
 
-	  REAL_VALUE_FROM_CONST_DOUBLE (d, x);
-	  REAL_VALUE_TO_TARGET_SINGLE (d, l);
-	  fprintf (file, "0x%08lx", l);
-	  break;
-	}
-
-      /* Fall through.  Let output_addr_const deal with it.  */
+    /* Fall through.  Let output_addr_const deal with it.  */
     default:
       output_addr_const (file, x);
       break;
@@ -287,57 +243,47 @@ mist32_print_operand_address (FILE *stream, rtx address)
 #undef  TARGET_PRINT_OPERAND_ADDRESS
 #define TARGET_PRINT_OPERAND_ADDRESS mist32_print_operand_address
 
+/* Addressing Modes */
+
 static bool
-mist32_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x, bool strict)
+mist32_legitimate_address_p (machine_mode mode, rtx x, bool strict)
 {
-  if (! REG_P (x))
-    return false;
-
-  if (strict)
+  switch (GET_CODE (x))
     {
-      if (GPR_P (REGNO (x)))
-	return true;
+    case REG:
+      if (strict)
+	return GPR_P (REGNO (x));
+      else
+	return (GPR_P (REGNO (x))
+		|| REGNO (x) == ARG_POINTER_REGNUM
+		|| !HARD_REGISTER_P (x));
+      break;
+    case PLUS:
+      /* FIXME: only legitimate if not strict? */
+      if (REG_P (XEXP (x, 0))
+	  && mist32_legitimate_address_p (mode, XEXP (x, 0), strict)
+	  && CONST_INT_P (XEXP (x, 1))
+	  && !strict)
+	{
+	  if (mode == SImode
+	      && !(INTVAL (XEXP (x, 1)) & 0x3)
+	      && INTVAL (XEXP (x, 1)) <= 127
+	      && INTVAL (XEXP (x, 1)) >= -128)
+	    return true;
+	  if (mode == HImode
+	      && !(INTVAL (XEXP (x, 1)) & 0x1)
+	      && INTVAL (XEXP (x, 1)) <= 63
+	      && INTVAL (XEXP (x, 1)) >= -64)
+	    return true;
+	  if (mode == QImode
+	      && INTVAL (XEXP (x, 1)) <= 31
+	      && INTVAL (XEXP (x, 1)) >= -32)
+	    return true;
+	}
+      break;
+    default:
+      break;
     }
-  else
-    {
-      if (GPR_P (REGNO (x))
-	  || REGNO (x) == ARG_POINTER_REGNUM
-	  || ! HARD_REGISTER_P (x))
-	return true;
-    }
-
-  /*
-  switch (GET_CODE (x)) {
-  case PLUS:
-    if (REG_P (XEXP (x, 0))
-	&& GPR_P (REGNO (XEXP (x, 0)))
-	&& CONSTANT_ADDRESS_P (XEXP (x, 1))
-	&& CONST_INT_P (XEXP (x, 1))) {
-      if (mode == SImode
-	  && INTVAL (XEXP (x, 1)) <= 127
-	  && INTVAL (XEXP (x, 1)) >= -128)
-	return true;
-      if (mode == QImode
-	  && INTVAL (XEXP (x, 1)) <= 31
-	  && INTVAL (XEXP (x, 1)) >= -32)
-	return true;
-    }
-    break;
-  case REG:
-    if (strict)
-      return GPR_P (REGNO (x));
-    else
-      return (GPR_P (REGNO (x))
-	      || ! HARD_REGISTER_P (x));
-    break;
-  case SYMBOL_REF:
-  case LABEL_REF:
-    return true;
-    break;
-  default:
-    break;
-  }
-  */
 
   return false;
 }
@@ -347,25 +293,10 @@ mist32_legitimate_constant_p (machine_mode mode ATTRIBUTE_UNUSED, rtx x)
 {
   return (! (GET_CODE (x) == CONST
 	     && GET_CODE (XEXP (x, 0)) == PLUS
-	     && (GET_CODE (XEXP (XEXP (x, 0), 0)) == SYMBOL_REF || GET_CODE (XEXP (XEXP (x, 0), 0)) == LABEL_REF)
+	     && (GET_CODE (XEXP (XEXP (x, 0), 0)) == SYMBOL_REF
+		 || GET_CODE (XEXP (XEXP (x, 0), 0)) == LABEL_REF)
 	     && CONST_INT_P (XEXP (XEXP (x, 0), 1))
 	     && (unsigned HOST_WIDE_INT) INTVAL (XEXP (XEXP (x, 0), 1)) > 0x3ff));
-
-  /*
-  switch (GET_CODE (x)) {
-  case CONST:
-    break;
-  case SYMBOL_REF:
-  case LABEL_REF:
-  case CONST_INT:
-    return true;
-    break;
-  default:
-    break;
-  }
-
-  return false;
-  */
 }
 
 #undef TARGET_LEGITIMATE_ADDRESS_P
