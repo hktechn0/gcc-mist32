@@ -531,11 +531,11 @@
 
 ;; Multiplication 
 
-;; Signed multiplication producing 32-bit result from 16-bit inputs
-(define_insn "mulhisi3"
+;; Unsigned multiplication producing 32-bit result from 16-bit inputs
+(define_insn "umulhisi3"
   [(set (match_operand:SI 0 "register_operand"                          "=r,r")
-	(mult:SI (sign_extend:SI (match_operand:HI 1 "register_operand" "%0,0"))
-		 (sign_extend:SI (match_operand:HI 2 "register_operand"  "r,I"))))]
+	(mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand" "%0,0"))
+		 (zero_extend:SI (match_operand:HI 2 "register_operand"  "r,I"))))]
   ""
   "@
    mull\t%0, %2
