@@ -535,7 +535,7 @@
 (define_insn "umulhisi3"
   [(set (match_operand:SI 0 "register_operand"                          "=r,r")
 	(mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand" "%0,0"))
-		 (zero_extend:SI (match_operand:HI 2 "register_operand"  "r,I"))))]
+		 (zero_extend:SI (match_operand:HI 2 "o2_i11_operand"    "r,I"))))]
   ""
   "@
    mull\t%0, %2
@@ -546,11 +546,35 @@
 (define_insn "mulsi3"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
 	(mult:SI (match_operand:SI 1 "register_operand" "%0,0")
-		 (match_operand:SI 2 "register_operand"  "r,I")))]
+		 (match_operand:SI 2 "o2_i11_operand"    "r,I")))]
   ""
   "@
    mull\t%0, %2
    mull\t%0, %2"
+)
+
+;; Signed multiplication producing 64-bit result highpart from 32-bit inputs
+(define_insn "smulsi3_highpart"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+        (truncate:SI
+	 (lshiftrt:DI
+	  (mult:DI (sign_extend:DI (match_operand:SI 1 "register_operand" "%0"))
+		   (sign_extend:DI (match_operand:SI 2 "register_operand"  "r")))
+	  (const_int 32))))]
+  ""
+  "mulh\t%0, %2"
+)
+
+;; Unsigned multiplication producing 64-bit result highpart from 32-bit inputs
+(define_insn "umulsi3_highpart"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+        (truncate:SI
+	 (lshiftrt:DI
+	  (mult:DI (zero_extend:DI (match_operand:SI 1 "register_operand" "%0"))
+		   (zero_extend:DI (match_operand:SI 2 "register_operand"  "r")))
+	  (const_int 32))))]
+  ""
+  "umulh\t%0, %2"
 )
 
 ;; Division
