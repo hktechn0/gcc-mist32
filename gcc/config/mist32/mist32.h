@@ -181,6 +181,7 @@
 #define GP_REG_FIRST 0
 #define GP_REG_LAST  31
 #define GP_REG_NUM   (GP_REG_LAST - GP_REG_FIRST + 1)
+#define GPR_P(REGNO) (IN_RANGE ((REGNO), GP_REG_FIRST, GP_REG_LAST))
 
 /*
 #define FP_REG_FIRST 32
@@ -220,8 +221,6 @@
 /* The limited value of stack pointer addition immediate */
 #define STACK_POINTER_ADD_MAX (0x7fff << 2)
 #define STACK_POINTER_SUB_MAX (0x8000 << 2)
-
-#define GPR_P(REGNO)   (IN_RANGE ((REGNO), GP_REG_FIRST, GP_REG_LAST))
 
 enum reg_class
 {
