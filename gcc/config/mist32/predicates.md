@@ -29,7 +29,7 @@
   (match_code "symbol_ref,label_ref,const_int")
 )
 
-;; general register operand
+;; General register operand
 (define_predicate "general_register_operand"
   (match_operand 0 "register_operand")
 {
@@ -39,15 +39,16 @@
   return GPR_P(REGNO(op));
 })
 
-;; stack pointer register operand
+;; Stack pointer register operand
 (define_predicate "stack_pointer_operand"
   (and (match_code "reg")
        (match_test "REGNO (op) == STACK_POINTER_REGNUM")))
+
 (define_predicate "register_operand_not_sp"
   (and (match_code "reg")
        (match_test "REGNO (op) != STACK_POINTER_REGNUM")))
 
-;; Return true if OP is load/store with displacement
+;; Displacement immediate
 (define_predicate "disp8_operand"
   (match_code "const_int")
 {
@@ -81,22 +82,6 @@
    return 0;
 })
 
-;; Return true if OP is a const_int requiring two instructions to
-;; load.
-(define_predicate "two_insn_const_operand"
-  (match_code "const_int")
-{
-  if (!CONST_INT_P (op))
-    return 0;
-
-  if (satisfies_constraint_J (op)
-      || satisfies_constraint_K (op)
-      || satisfies_constraint_L (op))
-    return 0;
-
-  return 1;
-})
-
 ;; Returns true if OP is a symbol reference.
 (define_predicate "symbolic_operand"
   (match_code "symbol_ref,label_ref,const")
@@ -113,7 +98,7 @@
     }
 })
 
-;; Returns true if OP is an acceptable operand for lih/w16l.
+;; Returns true if OP is an acceptable operand for two insn (lih + w16l).
 (define_predicate "lih_wl16_operand"
   (match_code "symbol_ref,label_ref,const_int")
 {
@@ -121,10 +106,13 @@
       || GET_CODE (op) == LABEL_REF)
     return 1;
 
-  if (two_insn_const_operand (op, mode))
-    return 1;
+  if (CONST_INT_P (op)
+      && (satisfies_constraint_J (op)
+          || satisfies_constraint_K (op)
+          || satisfies_constraint_L (op)))
+    return 0;
 
-  return 0;
+  return 1;
 })
 
 ;; mist32 O2/I11 operand
@@ -144,6 +132,7 @@
   return 0;
 })
 
+;; For stack pointer offset
 (define_predicate "small_stack_offset_operand"
   (match_code "const_int")
 {

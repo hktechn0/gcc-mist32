@@ -26,15 +26,6 @@
 (include "predicates.md")
 (include "constraints.md")
 
-; mist32 instructions are 4 bytes long
-(define_attr "length" "" (const_int 4))
-
-; instruction type
-; FIXME: this is dummy stub
-(define_attr "type"
-  "alu"
-  (const_string "alu"))
-
 ;; -------------------------------------------------------------------------
 ;; Define
 ;; -------------------------------------------------------------------------
@@ -50,12 +41,40 @@
 ;; Pipeline description
 ;; -------------------------------------------------------------------------
 
-; FIXME: dummy description
+;; mist32 instructions are 4 bytes long
+(define_attr "length" "" (const_int 4))
+
+;; instruction type
+(define_attr "type"
+  "int, mul, div, load, store, branch, sysreg"
+  (const_string "int"))
+
 (define_automaton "mist32")
-(define_cpu_unit "cpu" "mist32")
-(define_insn_reservation "alu" 1
-  (eq_attr "type" "alu")
-  "cpu")
+
+;; MIST1032SA fetches 2 insructions at once
+(define_cpu_unit "fetch_0, fetch_1" "mist32")
+(define_reservation "fetch" "fetch_0 | fetch_1")
+
+;; MIST1032SA has 4 execution units
+(define_cpu_unit "alu_pipe, complex_pipe, branch_pipe, memory_pipe" "mist32")
+
+(define_insn_reservation "simple" 2 (eq_attr "type" "int")
+  "fetch, (alu_pipe | complex_pipe)")
+
+(define_insn_reservation "complex_mul" 3 (eq_attr "type" "mul")
+  "fetch, (complex_pipe) * 2")
+
+(define_insn_reservation "complex_div" 4 (eq_attr "type" "div")
+  "fetch, (complex_pipe) * 3")
+
+(define_insn_reservation "branch" 3 (eq_attr "type" "branch")
+  "fetch, (branch_pipe) * 2")
+
+(define_insn_reservation "memory" 5 (eq_attr "type" "load,store")
+  "fetch, (memory_pipe) * 4")
+
+(define_insn_reservation "system_register" 3 (eq_attr "type" "sysreg")
+  "fetch, (memory_pipe) * 2")
 
 ;; -------------------------------------------------------------------------
 ;; nop instruction
@@ -65,7 +84,7 @@
   [(const_int 0)]
   ""
   "nop"
-)
+  [(set_attr "type" "int")])
 
 ;; -------------------------------------------------------------------------
 ;; push / pop and stack instruction
@@ -76,14 +95,14 @@
 	(match_operand:SI 0 "register_operand" "r"))]
   ""
   "push\t%0"
-)
+  [(set_attr "type" "store")])
 
 (define_insn "popsi1"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(mem:SI (post_inc:SI (reg:SI STACK_POINTER_REGNUM))))]
   ""
   "pop\t%0"
-)
+  [(set_attr "type" "load")])
 
 ;; Stack pointer calculation
 
@@ -94,7 +113,7 @@
 		 (match_operand:SI 0 "const_int_operand" "N")))]
   ""
   "srspadd\t%0"
-)
+  [(set_attr "type" "sysreg")])
 
 ;; reg = sp + const_int : split insn
 (define_insn "*add_reg_sp_insn"
@@ -114,9 +133,8 @@
   [(set (match_dup 2) (match_dup 0))
    (set (match_dup 2) (plus:SI (match_dup 2) (match_dup 1)))
    (set (match_dup 0) (match_dup 2))]
-  "
-{ operands[2] = gen_rtx_REG (Pmode, TMP_REGNUM); }
-")
+  "{ operands[2] = gen_rtx_REG (Pmode, TMP_REGNUM); }"
+)
 
 ;; reg = sp + reg or const_int : split pattern
 (define_split
@@ -126,9 +144,8 @@
   ""
   [(set (match_dup 2) (match_dup 1))
    (set (match_dup 0) (plus:SI (match_dup 0) (match_dup 2)))]
-  "
-{ operands[2] = gen_rtx_REG (Pmode, TMP_REGNUM); }
-")
+  "{ operands[2] = gen_rtx_REG (Pmode, TMP_REGNUM); }"
+)
 
 (define_split
   [(set (match_operand:SI 0 "register_operand_not_sp" "")
@@ -158,9 +175,8 @@
   [(set (match_dup 0) (match_dup 1))
    (set (match_dup 3) (match_dup 2))
    (set (match_dup 0) (plus:SI (match_dup 0) (match_dup 3)))]
-  "
-{ operands[3] = gen_rtx_REG (Pmode, TMP_REGNUM); }
-")
+  "{ operands[3] = gen_rtx_REG (Pmode, TMP_REGNUM); }"
+)
 
 ;; -------------------------------------------------------------------------
 ;; Move instruction
@@ -186,7 +202,7 @@
 			 (match_operand:SI 2 "disp6_operand"     "i"))))]
   ""
   "ldd8\t%0, %1, %2"
-)
+  [(set_attr "type" "load")])
 
 (define_insn "*storeqi_disp"
   [(set (mem:QI (plus:SI (match_operand:SI 0 "register_operand" "%r")
@@ -194,21 +210,21 @@
 	(match_operand:QI 2 "register_operand" "r"))]
   ""
   "std8\t%2, %0, %1"
-)
+  [(set_attr "type" "store")])
 
 (define_insn "*loadqi_mem"
   [(set (match_operand:QI 0         "register_operand" "=r")
 	(mem:QI (match_operand:SI 1 "register_operand" "r")))]
   ""
   "ld8\t%0, %1"
-)
+  [(set_attr "type" "load")])
 
 (define_insn "*storeqi_mem"
   [(set (mem:QI (match_operand:SI 0 "register_operand" "r"))
 	(match_operand:QI 1         "register_operand" "r"))]
   ""
   "st8\t%1, %0"
-)
+  [(set_attr "type" "store")])
 
 (define_insn "*movqi_insn"
   [(set (match_operand:QI 0 "register_operand" "=r,r,r,k")
@@ -219,7 +235,7 @@
    lil\t%0, %1
    srspr\t%0
    srspw\t%1"
-)
+  [(set_attr "type" "int,int,sysreg,sysreg")])
 
 ;; HI mode
 
@@ -241,7 +257,7 @@
 			 (match_operand:SI 2 "disp7_operand"     "i"))))]
   ""
   "ldd16\t%0, %1, %2"
-)
+  [(set_attr "type" "load")])
 
 (define_insn "*storehi_disp "
   [(set (mem:HI (plus:SI (match_operand:SI 0 "register_operand" "%r")
@@ -249,21 +265,21 @@
 	(match_operand:HI 2 "register_operand" "r"))]
   ""
   "std16\t%2, %0, %1"
-)
+  [(set_attr "type" "store")])
 
 (define_insn "*loadhi_mem"
   [(set (match_operand:HI 0         "register_operand" "=r")
 	(mem:HI (match_operand:SI 1 "register_operand" "r")))]
   ""
   "ld16\t%0, %1"
-)
+  [(set_attr "type" "load")])
 
 (define_insn "*storehi_mem"
   [(set (mem:HI (match_operand:SI 0 "register_operand" "r"))
 	(match_operand:HI 1         "register_operand" "r"))]
   ""
   "st16\t%1, %0"
-)
+  [(set_attr "type" "store")])
 
 (define_insn "*movhi_insn"
   [(set (match_operand:HI 0 "register_operand" "=r,r,r,r,k")
@@ -275,7 +291,7 @@
    ulil\t%0, %1
    srspr\t%0
    srspw\t%1"
-)
+  [(set_attr "type" "int,int,int,sysreg,sysreg")])
 
 ;; SI mode
 
@@ -290,84 +306,11 @@
     if (MEM_P (operands[0]))
       operands[1] = force_reg (SImode, operands[1]);
   }
-
-  if (MEM_P (operands[1])
-      && (GET_CODE (XEXP (operands[1], 0)) == LABEL_REF
-          || GET_CODE (XEXP (operands[1], 0)) == SYMBOL_REF)) {
-    emit_insn(gen_movsi_split(operands[0], operands[1]));
-    DONE;
-  }
-
-  if (REG_P (operands[0])
-      && lih_wl16_operand (operands[1], SImode)) {
-    emit_insn(gen_movsi_split(operands[0], operands[1]));
-    DONE;
-  }
 }
 ")
 
-(define_insn "*movepc"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(plus:SI (pc)
-		 (match_operand 1 "immediate_operand" "I")))]
-  ""
-  "movepc\t%0, %1"
-)
-
-(define_insn "*loadsi_disp"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(mem:SI (plus:SI (match_operand:SI 1 "register_operand" "%r")
-			 (match_operand:SI 2 "disp8_operand"     "i"))))]
-  ""
-  "ldd32\t%0, %1, %2"
-)
-
-(define_insn "*storesi_disp"
-  [(set (mem:SI (plus:SI (match_operand:SI 0 "register_operand" "%r")
-			 (match_operand:SI 1 "disp8_operand"     "i")))
-	(match_operand:SI 2 "register_operand" "r"))]
-  ""
-  "std32\t%2, %0, %1"
-)
-
-(define_insn "*loadsi_mem"
-  [(set (match_operand:SI         0 "register_operand" "=r")
-	(mem:SI (match_operand:SI 1 "register_operand" "r")))]
-  ""
-  "ld32\t%0, %1"
-)
-
-(define_insn "*storesi_mem"
-  [(set (mem:SI (match_operand:SI 0 "register_operand" "r"))
-	(match_operand:SI         1 "register_operand" "r"))]
-  ""
-  "st32\t%1, %0"
-)
-
-(define_insn "set_hi_si"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(high:SI (match_operand 1 "lih_wl16_operand" "g")))]
-  ""
-  "lih\t%0, hi(%1)"
-)
-
-(define_insn "lo_sum_si"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(lo_sum:SI (match_operand:SI 1 "register_operand" "%0")
-		   (match_operand:SI 2 "lih_wl16_operand" "g")))]
-  ""
-  "wl16\t%0, lo(%2)"
-)
-
-(define_expand "movsi_split"
-  [(set (match_operand:SI 0 "register_operand" "")
-	(high:SI (match_operand:SI 1 "lih_wl16_operand" "")))
-   (set (match_dup 0)
-	(lo_sum:SI (match_dup 0) (match_dup 1)))]
-  ""
-  ""
-)
-
+;; Const symbol + imm split pattern
+;; FIXME: this operand used by memory?
 (define_split
   [(set (match_operand:SI 0 "register_operand" "")
 	(const:SI (plus:SI (match_operand:SI 1 "symbolic_operand" "")
@@ -382,6 +325,15 @@
    ""
 )
 
+(define_insn "*movsi_symbol_disp"
+  [(set (match_operand:SI 0 "register_operand" "")
+	(const:SI (plus:SI (match_operand:SI 1 "symbolic_operand" "")
+			   (match_operand:SI 2 "const_int_operand" ""))))]
+  ""
+  "#"
+)
+
+;; Large interger immediate split pattern
 (define_split
   [(set (match_operand:SI 0 "register_operand" "")
 	(match_operand:SI 1 "lih_wl16_operand" ""))]
@@ -393,9 +345,74 @@
   ""
 )
 
+(define_insn "*movsi_two_insn"
+  [(set (match_operand:SI 0 "register_operand" "")
+	(match_operand:SI 1 "lih_wl16_operand"  ""))]
+  ""
+  "#"
+)
+
+;; Immediate
+(define_insn "set_hi_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(high:SI (match_operand 1 "lih_wl16_operand" "g")))]
+  ""
+  "lih\t%0, hi(%1)"
+  [(set_attr "type" "int")])
+
+(define_insn "lo_sum_si"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(lo_sum:SI (match_operand:SI 1 "register_operand" "%0")
+		   (match_operand:SI 2 "lih_wl16_operand" "g")))]
+  ""
+  "wl16\t%0, lo(%2)"
+  [(set_attr "type" "int")])
+
+;; Program counter
+(define_insn "*movepc"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(plus:SI (pc)
+		 (match_operand 1 "immediate_operand" "I")))]
+  ""
+  "movepc\t%0, %1"
+  [(set_attr "type" "int")])
+
+;; Load, Store with immediate
+(define_insn "*loadsi_disp"
+  [(set (match_operand:SI 0 "register_operand" "=r")
+	(mem:SI (plus:SI (match_operand:SI 1 "register_operand" "%r")
+			 (match_operand:SI 2 "disp8_operand"     "i"))))]
+  ""
+  "ldd32\t%0, %1, %2"
+  [(set_attr "type" "load")])
+
+(define_insn "*storesi_disp"
+  [(set (mem:SI (plus:SI (match_operand:SI 0 "register_operand" "%r")
+			 (match_operand:SI 1 "disp8_operand"     "i")))
+	(match_operand:SI 2 "register_operand" "r"))]
+  ""
+  "std32\t%2, %0, %1"
+  [(set_attr "type" "store")])
+
+;; Load, Store
+(define_insn "*loadsi_mem"
+  [(set (match_operand:SI         0 "register_operand" "=r")
+	(mem:SI (match_operand:SI 1 "register_operand" "r")))]
+  ""
+  "ld32\t%0, %1"
+  [(set_attr "type" "load")])
+
+(define_insn "*storesi_mem"
+  [(set (mem:SI (match_operand:SI 0 "register_operand" "r"))
+	(match_operand:SI         1 "register_operand" "r"))]
+  ""
+  "st32\t%1, %0"
+  [(set_attr "type" "store")])
+
+;; and others...
 (define_insn "*movsi_insn"
-  [(set (match_operand:SI 0 "register_operand" "=r,r,r,r,r,k,r")
-	(match_operand:SI 1 "general_operand"   "r,J,K,L,k,r,R"))]
+  [(set (match_operand:SI 0 "register_operand" "=r,r,r,r,r,k")
+	(match_operand:SI 1 "general_operand"   "r,J,K,L,k,r"))]
   "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
   "@
    move\t%0, %1
@@ -403,9 +420,8 @@
    ulil\t%0, %1
    lih\t%0, hi(%1)
    srspr\t%0
-   srspw\t%1
-   #"
-)
+   srspw\t%1"
+  [(set_attr "type" "int,int,int,int,sysreg,sysreg")])
 
 ;; -------------------------------------------------------------------------
 ;; Conversion instructions
@@ -421,7 +437,7 @@
    get8\t%0, 0
    ld8\t%0, %1
    ldd8\t%0, %1"
-)
+  [(set_attr "type" "int,load,load")])
 
 (define_insn "zero_extendhisi2"
   [(set (match_operand:SI 0 "register_operand"                    "=r,r,r")
@@ -431,7 +447,7 @@
    wh16\t%0, 0x0000
    ld16\t%0, %1
    ldd16\t%0, %1"
-)
+  [(set_attr "type" "int,load,load")])
 
 ;; Signed conversions
 
@@ -440,14 +456,14 @@
 	(sign_extend:SI (match_operand:QI 1 "register_operand" "r")))]
   ""
   "sext8\t%0, %1"
-)
+  [(set_attr "type" "int")])
 
 (define_insn "extendhisi2"
   [(set (match_operand:SI 0 "register_operand"                "=r")
 	(sign_extend:SI (match_operand:HI 1 "register_operand" "r")))]
   ""
   "sext16\t%0, %1"
-)
+  [(set_attr "type" "int")])
 
 ;; -------------------------------------------------------------------------
 ;; Arithmetic instructions
@@ -475,7 +491,7 @@
 		 (const_int 1)))]
   ""
   "inc\t%0, %1"
-)
+  [(set_attr "type" "int")])
 
 (define_insn "*dec_"
   [(set (match_operand:SI 0 "register_operand"         "=r")
@@ -483,7 +499,7 @@
 		 (const_int -1)))]
   ""
   "dec\t%0, %1"
-)
+  [(set_attr "type" "int")])
 
 (define_insn "*addsi3_insn"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
@@ -493,7 +509,7 @@
   "@
    add\t%0, %2
    add\t%0, %2"
-)
+  [(set_attr "type" "int,int")])
 
 ;; Subtraction
 
@@ -517,7 +533,7 @@
 		  (const_int 1)))]
   ""
   "dec\t%0, %1"
-)
+  [(set_attr "type" "int")])
 
 (define_insn "*subsi3_insn"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
@@ -527,7 +543,7 @@
   "@
    sub\t%0, %2
    sub\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 ;; Multiplication 
 
@@ -540,7 +556,7 @@
   "@
    mull\t%0, %2
    mull\t%0, %2"
-)
+  [(set_attr "type" "mul,mul")])
 
 ;; Signed multiplication producing 32-bit result from 32-bit inputs
 (define_insn "mulsi3"
@@ -551,7 +567,7 @@
   "@
    mull\t%0, %2
    mull\t%0, %2"
-)
+  [(set_attr "type" "mul,mul")])
 
 ;; Signed multiplication producing 64-bit result highpart from 32-bit inputs
 (define_insn "smulsi3_highpart"
@@ -563,7 +579,7 @@
 	  (const_int 32))))]
   ""
   "mulh\t%0, %2"
-)
+  [(set_attr "type" "mul")])
 
 ;; Unsigned multiplication producing 64-bit result highpart from 32-bit inputs
 (define_insn "umulsi3_highpart"
@@ -575,7 +591,7 @@
 	  (const_int 32))))]
   ""
   "umulh\t%0, %2"
-)
+  [(set_attr "type" "mul")])
 
 ;; Division
 
@@ -588,7 +604,7 @@
   "@
    div\t%0, %2
    div\t%0, %2"
-)
+  [(set_attr "type" "div")])
 
 ;; Unigned division
 (define_insn "udivsi3"
@@ -599,7 +615,7 @@
   "@
    udiv\t%0, %2
    udiv\t%0, %2"
-)
+  [(set_attr "type" "div,div")])
 
 ;; Signed modulo operation
 (define_insn "modsi3"
@@ -610,7 +626,7 @@
   "@
    mod\t%0, %2
    mod\t%0, %2"
-)
+  [(set_attr "type" "div,div")])
 
 ;; Unsigned modulo operation
 (define_insn "umodsi3"
@@ -621,7 +637,7 @@
   "@
    umod\t%0, %2
    umod\t%0, %2"
-)
+  [(set_attr "type" "div,div")])
 
 ;; Max, Min
 
@@ -634,7 +650,7 @@
   "@
    max\t%0, %2
    max\t%0, %2"
-)
+  [(set_attr "type" "int,int")])
 
 (define_insn "sminsi3"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
@@ -644,7 +660,7 @@
   "@
    min\t%0, %2
    min\t%0, %2"
-)
+  [(set_attr "type" "int,int")])
 
 ;; Unsigned
 (define_insn "umaxsi3"
@@ -655,7 +671,7 @@
   "@
    umax\t%0, %2
    umax\t%0, %2"
-)
+  [(set_attr "type" "int,int")])
 
 (define_insn "uminsi3"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
@@ -665,7 +681,7 @@
   "@
    umin\t%0, %2
    umin\t%0, %2"
-)
+  [(set_attr "type" "int,int")])
 
 ;; -------------------------------------------------------------------------
 ;; Shift operators
@@ -680,7 +696,7 @@
   "@
    shl\t%0, %2
    shl\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 ;; Arithmetic Shift Right
 (define_insn "ashrsi3"
@@ -691,7 +707,7 @@
   "@
    sar\t%0, %2
    sar\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 ;; Logical Shift Right
 (define_insn "lshrsi3"
@@ -702,7 +718,7 @@
   "@
    shr\t%0, %2
    shr\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 ;; Rotate Shift Left
 (define_insn "rotlsi3"
@@ -713,7 +729,7 @@
   "@
    rol\t%0, %2
    rol\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 ;; Rotate Shift Right
 (define_insn "rotrsi3"
@@ -724,7 +740,7 @@
   "@
    ror\t%0, %2
    ror\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 ;; -------------------------------------------------------------------------
 ;; Logical operators
@@ -737,7 +753,7 @@
 		(match_operand:SI 2 "register_operand"  "r")))]
   ""
   "and\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 (define_insn "*nandsi3"
   [(set (match_operand:SI 0 "register_operand"                 "=r")
@@ -745,7 +761,7 @@
 		(not:SI (match_operand:SI 2 "register_operand"  "r"))))]
   ""
   "nand\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 ;; Inclusive OR, 32-bit integers
 (define_insn "iorsi3"
@@ -754,7 +770,7 @@
 		(match_operand:SI 2 "register_operand"  "r")))]
   ""
   "or\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 (define_insn "*inorsi3"
   [(set (match_operand:SI 0 "register_operand"                 "=r")
@@ -762,7 +778,7 @@
 		(not:SI (match_operand:SI 2 "register_operand"  "r"))))]
   ""
   "nor\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 ;; Exclusive OR, 32-bit integers
 (define_insn "xorsi3"
@@ -771,7 +787,7 @@
 		(match_operand:SI 2 "register_operand"  "r")))]
   ""
   "xor\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 (define_insn "*xnorsi3"
   [(set (match_operand:SI 0 "register_operand"                 "=r")
@@ -779,7 +795,7 @@
 			(match_operand:SI 2 "register_operand"  "r"))))]
   ""
   "xnor\t%0, %2"
-)
+  [(set_attr "type" "int")])
 
 ;; Negative (Zero's comlement), 32-bit integers
 (define_insn "negsi2"
@@ -787,7 +803,7 @@
 	(neg:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
   "neg\t%0, %1"
-)
+  [(set_attr "type" "int")])
 
 ;; One's complement (Logical Not), 32-bit integers
 (define_insn "one_cmplsi2"
@@ -795,7 +811,7 @@
 	(not:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
   "not\t%0, %1"
-)
+  [(set_attr "type" "int")])
 
 ;; Byte Swap
 (define_insn "bswapsi2"
@@ -803,7 +819,7 @@
 	(bswap:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
   "rev8\t%0, %1"
-)
+  [(set_attr "type" "int")])
 
 ;; -------------------------------------------------------------------------
 ;; Compare instructions
@@ -868,8 +884,8 @@
   "@
    cmp\t%1, %2\n\tbr\t%3, #%b0
    cmp\t%1, %2\n\tbr\t%3, #%b0"
-  [(set_attr "length" "8")]
-)
+  [(set_attr "length" "8")
+   (set_attr "type" "branch,branch")])
 
 (define_insn "*cbranch_false"
   [(set (pc)
@@ -882,8 +898,8 @@
   "@
    cmp\t%1, %2\n\tbr\t%3, #%B0
    cmp\t%1, %2\n\tbr\t%3, #%B0"
-  [(set_attr "length" "8")]
-)
+  [(set_attr "length" "8")
+   (set_attr "type" "branch,branch")])
 
 ;(define_insn "*branch_true"
 ;  [(set (pc)
@@ -924,8 +940,8 @@
    (clobber (reg:SI RETURN_POINTER_REGNUM))]
   ""
   "movepc\trret, 8\n\tb\t%0, #al"
-  [(set_attr "length" "8")]
-)
+  [(set_attr "length" "8")
+   (set_attr "type" "branch")])
 
 (define_insn "*call_label"
   [(call (mem:SI (match_operand:SI 0 "call_address_operand" ""))
@@ -933,8 +949,8 @@
    (clobber (reg:SI RETURN_POINTER_REGNUM))]
   "lih_wl16_operand (operands[0], FUNCTION_MODE)"
   "lih\trtmp, hi(%0)\n\twl16\trtmp, lo(%0)\n\tmovepc\trret, 8\n\tb\trtmp, #al"
-  [(set_attr "length" "16")]
-)
+  [(set_attr "length" "16")
+   (set_attr "type" "branch")])
 
 ;; Subroutine call instruction returning a value.
 (define_expand "call_value"
@@ -953,8 +969,8 @@
    (clobber (reg:SI RETURN_POINTER_REGNUM))]
   ""
   "movepc\trret, 8\n\tb\t%1, #al"
-  [(set_attr "length" "8")]
-)
+  [(set_attr "length" "8")
+   (set_attr "type" "branch")])
 
 (define_insn "*call_value_label"
   [(set (match_operand 0 "register_operand"  "=r")
@@ -963,22 +979,22 @@
    (clobber (reg:SI RETURN_POINTER_REGNUM))]
   "lih_wl16_operand (operands[1], FUNCTION_MODE)"
   "lih\trtmp, hi(%1)\n\twl16\trtmp, lo(%1)\n\tmovepc\trret, 8\n\tb\trtmp, #al"
-  [(set_attr "length" "16")]
-)
+  [(set_attr "length" "16")
+   (set_attr "type" "branch")])
 
 ;; Jump inside a function; an unconditional branch.
 (define_insn "jump"
   [(set (pc) (label_ref (match_operand 0 "" "")))]
   ""
   "br\t%0, #al"
-)
+  [(set_attr "type" "branch")])
 
 ;; Jump to an address through a register
 (define_insn "indirect_jump"
   [(set (pc) (match_operand:SI 0 "address_operand" "r"))]
   ""
   "b\t%0, #al"
-)
+  [(set_attr "type" "branch")])
 
 ;; -------------------------------------------------------------------------
 ;; Prologue & Epilogue
@@ -1037,17 +1053,17 @@
 	      (use (reg:SI RETURN_POINTER_REGNUM))])]
   ""
   "b\trret, #al"
-)
+  [(set_attr "type" "branch")])
 
 (define_insn "return_rret"
   [(parallel [(return)
 	      (use (reg:SI RETURN_POINTER_REGNUM))])]
   "reload_completed"
   "b\trret, #al"
-)
+  [(set_attr "type" "branch")])
 
 (define_insn "return_ib"
   [(return)]
   "reload_completed"
   "ib"
-)
+  [(set_attr "type" "branch")])
