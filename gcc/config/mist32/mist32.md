@@ -160,7 +160,7 @@
 (define_split
   [(set (match_operand:SI 0 "register_operand_not_sp" "")
 	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "")
-		 (match_operand:SI 2 "small_stack_offset_operand" "")))]
+		 (match_operand:SI 2 "small_offset_operand" "")))]
   ""
   [(set (match_dup 0) (match_dup 1))
    (set (match_dup 0) (plus:SI (match_dup 0) (match_dup 2)))]
@@ -170,7 +170,7 @@
 (define_split
   [(set (match_operand:SI 0 "register_operand_not_sp" "")
 	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "")
-		 (match_operand:SI 2 "large_stack_offset_operand" "")))]
+		 (match_operand:SI 2 "large_offset_operand" "")))]
   ""
   [(set (match_dup 0) (match_dup 1))
    (set (match_dup 3) (match_dup 2))
@@ -314,7 +314,7 @@
 (define_split
   [(set (match_operand:SI 0 "register_operand" "")
 	(const:SI (plus:SI (match_operand:SI 1 "symbolic_operand" "")
-			   (match_operand:SI 2 "const_int_operand" ""))))]
+			   (match_operand:SI 2 "small_offset_operand" ""))))]
   ""
   [(set (match_dup 0)
 	(high:SI (match_dup 1)))
@@ -325,10 +325,10 @@
    ""
 )
 
-(define_insn "*movsi_symbol_disp"
+(define_insn "*movsi_symbol_offset"
   [(set (match_operand:SI 0 "register_operand" "")
 	(const:SI (plus:SI (match_operand:SI 1 "symbolic_operand" "")
-			   (match_operand:SI 2 "const_int_operand" ""))))]
+			   (match_operand:SI 2 "small_offset_operand" ""))))]
   ""
   "#"
 )
