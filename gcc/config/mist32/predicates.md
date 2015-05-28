@@ -132,8 +132,8 @@
   return 0;
 })
 
-;; For stack pointer offset
-(define_predicate "small_stack_offset_operand"
+;; For address offset
+(define_predicate "small_offset_operand"
   (match_code "const_int")
 {
   if (satisfies_constraint_I (op))
@@ -141,7 +141,7 @@
   return 0;
 })
 
-(define_predicate "large_stack_offset_operand"
+(define_predicate "large_offset_operand"
   (match_code "const_int")
 {
   if (!satisfies_constraint_I (op) && satisfies_constraint_J (op))
