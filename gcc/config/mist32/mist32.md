@@ -547,17 +547,6 @@
 
 ;; Multiplication 
 
-;; Unsigned multiplication producing 32-bit result from 16-bit inputs
-(define_insn "umulhisi3"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(mult:SI (zero_extend:SI (match_operand:HI 1 "register_operand" "%0,0"))
-		 (zero_extend:SI (match_operand:HI 2 "o2_i11_operand"    "r,I"))))]
-  ""
-  "@
-   mull\t%0, %2
-   mull\t%0, %2"
-  [(set_attr "type" "mul,mul")])
-
 ;; Signed multiplication producing 32-bit result from 32-bit inputs
 (define_insn "mulsi3"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
