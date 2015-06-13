@@ -119,7 +119,7 @@
 (define_insn "*add_reg_sp_insn"
   [(set (match_operand:SI 0 "register_operand_not_sp"        "=r")
 	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "%k")
-		 (match_operand:SI 2 "nonmemory_operand"      "rJ")))]
+		 (match_operand:SI 2 "nonmemory_operand"      "ri")))]
   ""
   "#"
 )
@@ -170,7 +170,7 @@
 (define_split
   [(set (match_operand:SI 0 "register_operand_not_sp" "")
 	(plus:SI (match_operand:SI 1 "stack_pointer_operand" "")
-		 (match_operand:SI 2 "large_offset_operand" "")))]
+		 (match_operand:SI 2 "const_int_operand" "")))]
   ""
   [(set (match_dup 0) (match_dup 1))
    (set (match_dup 3) (match_dup 2))
