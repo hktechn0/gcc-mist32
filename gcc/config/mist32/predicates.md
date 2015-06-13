@@ -140,11 +140,3 @@
     return 1;
   return 0;
 })
-
-(define_predicate "large_offset_operand"
-  (match_code "const_int")
-{
-  if (!satisfies_constraint_I (op) && satisfies_constraint_J (op))
-    return 1;
-  return 0;
-})
