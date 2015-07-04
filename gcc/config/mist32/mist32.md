@@ -46,35 +46,28 @@
 
 ;; instruction type
 (define_attr "type"
-  "int, mul, div, load, store, branch, sysreg"
+  "int, mul, load, store, branch, sysreg"
   (const_string "int"))
 
 (define_automaton "mist32")
 
-;; MIST1032SA fetches 2 insructions at once
-(define_cpu_unit "fetch_0, fetch_1" "mist32")
-(define_reservation "fetch" "fetch_0 | fetch_1")
-
-;; MIST1032SA has 4 execution units
-(define_cpu_unit "alu_pipe, complex_pipe, branch_pipe, memory_pipe" "mist32")
+;; MIST1032SA has 1 execution units
+(define_cpu_unit "exec_pipe" "mist32")
 
 (define_insn_reservation "simple" 2 (eq_attr "type" "int")
-  "fetch, (alu_pipe | complex_pipe)")
+  "(exec_pipe)")
 
 (define_insn_reservation "complex_mul" 3 (eq_attr "type" "mul")
-  "fetch, (complex_pipe) * 2")
-
-(define_insn_reservation "complex_div" 4 (eq_attr "type" "div")
-  "fetch, (complex_pipe) * 3")
+  "(exec_pipe) * 2")
 
 (define_insn_reservation "branch" 3 (eq_attr "type" "branch")
-  "fetch, (branch_pipe) * 2")
+  "(exec_pipe) * 2")
 
 (define_insn_reservation "memory" 5 (eq_attr "type" "load,store")
-  "fetch, (memory_pipe) * 4")
+  "(exec_pipe) * 4")
 
 (define_insn_reservation "system_register" 3 (eq_attr "type" "sysreg")
-  "fetch, (memory_pipe) * 2")
+  "(exec_pipe) * 2")
 
 ;; -------------------------------------------------------------------------
 ;; nop instruction
@@ -583,94 +576,7 @@
   [(set_attr "type" "mul")])
 
 ;; Division
-
-;; Signed division
-(define_insn "divsi3"
-  [(set (match_operand:SI 0 "register_operand"        "=r,r")
-	(div:SI (match_operand:SI 1 "register_operand" "0,0")
-		(match_operand:SI 2 "o2_i11_operand"   "r,I")))]
-  ""
-  "@
-   div\t%0, %2
-   div\t%0, %2"
-  [(set_attr "type" "div")])
-
-;; Unigned division
-(define_insn "udivsi3"
-  [(set (match_operand:SI 0 "register_operand"         "=r,r")
-	(udiv:SI (match_operand:SI 1 "register_operand" "0,0")
-		 (match_operand:SI 2 "o2_ui11_operand"  "r,M")))]
-  ""
-  "@
-   udiv\t%0, %2
-   udiv\t%0, %2"
-  [(set_attr "type" "div,div")])
-
-;; Signed modulo operation
-(define_insn "modsi3"
-  [(set (match_operand:SI 0 "register_operand"        "=r,r")
-	(mod:SI (match_operand:SI 1 "register_operand" "0,0")
-		(match_operand:SI 2 "o2_i11_operand"   "r,I")))]
-  ""
-  "@
-   mod\t%0, %2
-   mod\t%0, %2"
-  [(set_attr "type" "div,div")])
-
-;; Unsigned modulo operation
-(define_insn "umodsi3"
-  [(set (match_operand:SI 0 "register_operand"         "=r,r")
-	(umod:SI (match_operand:SI 1 "register_operand" "0,0")
-		 (match_operand:SI 2 "o2_ui11_operand"  "r,M")))]
-  ""
-  "@
-   umod\t%0, %2
-   umod\t%0, %2"
-  [(set_attr "type" "div,div")])
-
-;; Max, Min
-
-;; Unsigned
-(define_insn "smaxsi3"
-  [(set (match_operand:SI 0 "register_operand"          "=r,r")
-	(smax:SI (match_operand:SI 1 "register_operand" "%0,0")
-		 (match_operand:SI 2 "o2_i11_operand"    "r,I")))]
-  ""
-  "@
-   max\t%0, %2
-   max\t%0, %2"
-  [(set_attr "type" "int,int")])
-
-(define_insn "sminsi3"
-  [(set (match_operand:SI 0 "register_operand"          "=r,r")
-	(smin:SI (match_operand:SI 1 "register_operand" "%0,0")
-		 (match_operand:SI 2 "o2_i11_operand"    "r,I")))]
-  ""
-  "@
-   min\t%0, %2
-   min\t%0, %2"
-  [(set_attr "type" "int,int")])
-
-;; Unsigned
-(define_insn "umaxsi3"
-  [(set (match_operand:SI 0 "register_operand"          "=r,r")
-	(umax:SI (match_operand:SI 1 "register_operand" "%0,0")
-		 (match_operand:SI 2 "o2_ui11_operand"   "r,M")))]
-  ""
-  "@
-   umax\t%0, %2
-   umax\t%0, %2"
-  [(set_attr "type" "int,int")])
-
-(define_insn "uminsi3"
-  [(set (match_operand:SI 0 "register_operand"          "=r,r")
-	(umin:SI (match_operand:SI 1 "register_operand" "%0,0")
-		 (match_operand:SI 2 "o2_ui11_operand"   "r,M")))]
-  ""
-  "@
-   umin\t%0, %2
-   umin\t%0, %2"
-  [(set_attr "type" "int,int")])
+;; !! NO DIVIDER UNIT AVAILABLE ON TYPE-E
 
 ;; -------------------------------------------------------------------------
 ;; Shift operators
@@ -707,28 +613,6 @@
   "@
    shr\t%0, %2
    shr\t%0, %2"
-  [(set_attr "type" "int")])
-
-;; Rotate Shift Left
-(define_insn "rotlsi3"
-  [(set (match_operand:SI 0 "register_operand"            "=r,r")
-	(rotate:SI (match_operand:SI 1 "register_operand"  "0,0")
-		   (match_operand:SI 2 "o2_ui11_operand"   "r,M")))]
-  ""
-  "@
-   rol\t%0, %2
-   rol\t%0, %2"
-  [(set_attr "type" "int")])
-
-;; Rotate Shift Right
-(define_insn "rotrsi3"
-  [(set (match_operand:SI 0 "register_operand"              "=r,r")
-	(rotatert:SI (match_operand:SI 1 "register_operand"  "0,0")
-		     (match_operand:SI 2 "o2_ui11_operand"   "r,M")))]
-  ""
-  "@
-   ror\t%0, %2
-   ror\t%0, %2"
   [(set_attr "type" "int")])
 
 ;; -------------------------------------------------------------------------
@@ -786,28 +670,12 @@
   "xnor\t%0, %2"
   [(set_attr "type" "int")])
 
-;; Negative (Zero's comlement), 32-bit integers
-(define_insn "negsi2"
-  [(set (match_operand:SI 0 "register_operand"        "=r")
-	(neg:SI (match_operand:SI 1 "register_operand" "r")))]
-  ""
-  "neg\t%0, %1"
-  [(set_attr "type" "int")])
-
 ;; One's complement (Logical Not), 32-bit integers
 (define_insn "one_cmplsi2"
   [(set (match_operand:SI 0 "register_operand"        "=r")
 	(not:SI (match_operand:SI 1 "register_operand" "r")))]
   ""
   "not\t%0, %1"
-  [(set_attr "type" "int")])
-
-;; Byte Swap
-(define_insn "bswapsi2"
-  [(set (match_operand:SI 0 "register_operand"          "=r")
-	(bswap:SI (match_operand:SI 1 "register_operand" "r")))]
-  ""
-  "rev8\t%0, %1"
   [(set_attr "type" "int")])
 
 ;; -------------------------------------------------------------------------

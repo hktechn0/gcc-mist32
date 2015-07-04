@@ -928,36 +928,10 @@ mist32_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
 static int
 mist32_issue_rate (void)
 {
-  /* FIXME: MIST1032ISA (In-order) core is single issue. */
-  return 2;
+  return 1;
 }
 
 #undef TARGET_SCHED_ISSUE_RATE
 #define TARGET_SCHED_ISSUE_RATE mist32_issue_rate
-
-/* Compare insn and branch insn must be adjacent in mist32 */
-/* FIXME: This hooks seems not to be used */
-
-static bool
-mist32_macro_fusion_pair_p (rtx_insn* prev, rtx_insn* curr)
-{
-  rtx prev_set = single_set(prev);
-
-  if(!prev_set)
-    return false;
-
-  if (any_condjump_p (curr)) {
-    rtx cc_reg_1 = gen_rtx_REG (CCmode, CONDITION_CODE_REGNUM);
-    if (modified_in_p (cc_reg_1, prev_set))
-      return true;
-  }
-
-  return false;
-}
-
-#undef TARGET_SCHED_MACRO_FUSION_P
-#define TARGET_SCHED_MACRO_FUSION_P hook_bool_void_true
-#undef TARGET_SCHED_MACRO_FUSION_PAIR_P
-#define TARGET_SCHED_MACRO_FUSION_PAIR_P mist32_macro_fusion_pair_p
 
 struct gcc_target targetm = TARGET_INITIALIZER;

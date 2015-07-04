@@ -1,0 +1,4 @@
+LIB2ADD += \
+  $(srcdir)/divmod.c \
+  $(srcdir)/udivmod.c \
+  $(srcdir)/udivmodsi4.c
