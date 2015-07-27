@@ -206,7 +206,7 @@
 (define_insn "*movqi_insn"
   [(set (match_operand:QI 0 "register_operand" "=r,r,r,k")
 	(match_operand:QI 1 "general_operand"   "r,J,k,r"))]
-  "register_operand (operands[0], QImode) || register_operand (operands[1], QImode)"
+  ""
   "@
    move\t%0, %1
    lil\t%0, %1
@@ -245,7 +245,7 @@
 (define_insn "*movhi_insn"
   [(set (match_operand:HI 0 "register_operand" "=r,r,r,r,k")
 	(match_operand:HI 1 "general_operand"   "r,J,K,k,r"))]
-  "register_operand (operands[0], HImode) || register_operand (operands[1], HImode)"
+  ""
   "@
    move\t%0, %1
    lil\t%0, %1
@@ -357,7 +357,7 @@
 (define_insn "*movsi_insn"
   [(set (match_operand:SI 0 "register_operand" "=r,r,r,r,r,k")
 	(match_operand:SI 1 "general_operand"   "r,J,K,L,k,r"))]
-  "register_operand (operands[0], SImode) || register_operand (operands[1], SImode)"
+  ""
   "@
    move\t%0, %1
    lil\t%0, %1
@@ -448,28 +448,9 @@
   [(set_attr "type" "mul,mul")])
 
 ;; Signed multiplication producing 64-bit result highpart from 32-bit inputs
-(define_insn "smulsi3_highpart"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-        (truncate:SI
-	 (lshiftrt:DI
-	  (mult:DI (sign_extend:DI (match_operand:SI 1 "register_operand" "%0"))
-		   (sign_extend:DI (match_operand:SI 2 "register_operand"  "r")))
-	  (const_int 32))))]
-  ""
-  "mulh\t%0, %2"
-  [(set_attr "type" "mul")])
-
+; smulsi3_highpart
 ;; Unsigned multiplication producing 64-bit result highpart from 32-bit inputs
-(define_insn "umulsi3_highpart"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-        (truncate:SI
-	 (lshiftrt:DI
-	  (mult:DI (zero_extend:DI (match_operand:SI 1 "register_operand" "%0"))
-		   (zero_extend:DI (match_operand:SI 2 "register_operand"  "r")))
-	  (const_int 32))))]
-  ""
-  "umulh\t%0, %2"
-  [(set_attr "type" "mul")])
+; umulsi3_highpart
 
 ;; Division
 ;; !! NO DIVIDER UNIT AVAILABLE ON TYPE-E
@@ -551,20 +532,6 @@
   [(set_attr "type" "int")])
 
 ;; -------------------------------------------------------------------------
-;; Compare instructions
-;; -------------------------------------------------------------------------
-
-;(define_insn "*cmpsi"
-;  [(set (reg:CC CONDITION_CODE_REGNUM)
-;	(compare:CC (match_operand:SI 0 "register_operand"  "r,r")
-;		    (match_operand:SI 1 "nonmemory_operand" "r,I")))]
-;  ""
-;  "@
-;   cmp\t%0, %1
-;   cmp\t%0, %1"
-;)
-
-;; -------------------------------------------------------------------------
 ;; Branch instructions
 ;; -------------------------------------------------------------------------
 
@@ -611,44 +578,6 @@
    cmp\t%1, %2\n\tbr\t%3, #%B0"
   [(set_attr "length" "8")
    (set_attr "type" "branch,branch")])
-
-;(define_expand "cbranchsi4"
-;  [(set (reg:CC CONDITION_CODE_REGNUM)
-;	(compare:CC (match_operand:SI 1 "register_operand"  "")
-;		    (match_operand:SI 2 "nonmemory_operand" "")))
-;   (set (pc)
-;	(if_then_else (match_operator 0 "ordered_comparison_operator"
-;				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
-;		      (label_ref (match_operand 3 "" ""))
-;		      (pc)))]
-;  ""
-;  "
-;{
-;   operands[1] = force_reg (Pmode, operands[1]);
-;   /* FIXME operands[2] can be immediate */
-;   operands[2] = force_reg (Pmode, operands[2]);
-;}
-;")
-
-;(define_insn "*branch_true"
-;  [(set (pc)
-;	(if_then_else (match_operator 0 "comparison_operator"
-;				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
-;		      (label_ref (match_operand 1 "" ""))
-;		      (pc)))]
-;  ""
-;  "br\t%1, #%b0"
-;)
-
-;(define_insn "*branch_false"
-;  [(set (pc)
-;	(if_then_else (match_operator 0 "comparison_operator"
-;				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
-;		      (pc)
-;		      (label_ref (match_operand 1 "" ""))))]
-;  ""
-;  "br\t%1, #%B0"
-;)
 
 ;; -------------------------------------------------------------------------
 ;; Call and Jump instructions
