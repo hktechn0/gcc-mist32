@@ -259,6 +259,8 @@ mist32_legitimate_address_p (machine_mode mode, rtx x, bool strict)
 		|| !HARD_REGISTER_P (x));
       break;
     case PLUS:
+      break; /* REMOVE THIS, If you are trying implement load and store with displacement insn */
+
       /* FIXME: only legitimate if not strict? */
       if (REG_P (XEXP (x, 0))
 	  && mist32_legitimate_address_p (mode, XEXP (x, 0), strict)

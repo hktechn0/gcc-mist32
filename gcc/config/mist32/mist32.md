@@ -54,20 +54,20 @@
 ;; MIST1032SA has 1 execution units
 (define_cpu_unit "exec_pipe" "mist32")
 
-(define_insn_reservation "simple" 2 (eq_attr "type" "int")
+(define_insn_reservation "simple" 1
+  (eq_attr "type" "int, mul, load, store, branch, sysreg")
   "(exec_pipe)")
 
-(define_insn_reservation "complex_mul" 3 (eq_attr "type" "mul")
-  "(exec_pipe) * 2")
-
-(define_insn_reservation "branch" 3 (eq_attr "type" "branch")
-  "(exec_pipe) * 2")
-
-(define_insn_reservation "memory" 5 (eq_attr "type" "load,store")
-  "(exec_pipe) * 4")
-
-(define_insn_reservation "system_register" 3 (eq_attr "type" "sysreg")
-  "(exec_pipe) * 2")
+;(define_insn_reservation "simple" 2 (eq_attr "type" "int")
+;  "(exec_pipe)")
+;(define_insn_reservation "complex_mul" 3 (eq_attr "type" "mul")
+;  "(exec_pipe) * 2")
+;(define_insn_reservation "branch" 3 (eq_attr "type" "branch")
+;  "(exec_pipe) * 2")
+;(define_insn_reservation "memory" 5 (eq_attr "type" "load,store")
+;  "(exec_pipe) * 4")
+;(define_insn_reservation "system_register" 3 (eq_attr "type" "sysreg")
+;  "(exec_pipe) * 2")
 
 ;; -------------------------------------------------------------------------
 ;; nop instruction
@@ -189,22 +189,6 @@
 }
 ")
 
-(define_insn "*loadqi_disp"
-  [(set (match_operand:QI 0 "register_operand" "=r")
-	(mem:QI (plus:SI (match_operand:SI 1 "register_operand" "%r")
-			 (match_operand:SI 2 "disp6_operand"     "i"))))]
-  ""
-  "ldd8\t%0, %1, %2"
-  [(set_attr "type" "load")])
-
-(define_insn "*storeqi_disp"
-  [(set (mem:QI (plus:SI (match_operand:SI 0 "register_operand" "%r")
-			 (match_operand:SI 1 "disp6_operand"     "i")))
-	(match_operand:QI 2 "register_operand" "r"))]
-  ""
-  "std8\t%2, %0, %1"
-  [(set_attr "type" "store")])
-
 (define_insn "*loadqi_mem"
   [(set (match_operand:QI 0         "register_operand" "=r")
 	(mem:QI (match_operand:SI 1 "register_operand" "r")))]
@@ -243,22 +227,6 @@
     operands[1] = force_reg (HImode, operands[1]);
 }
 ")
-
-(define_insn "*loadhi_disp"
-  [(set (match_operand:HI 0 "register_operand" "=r")
-	(mem:HI (plus:SI (match_operand:SI 1 "register_operand" "%r")
-			 (match_operand:SI 2 "disp7_operand"     "i"))))]
-  ""
-  "ldd16\t%0, %1, %2"
-  [(set_attr "type" "load")])
-
-(define_insn "*storehi_disp "
-  [(set (mem:HI (plus:SI (match_operand:SI 0 "register_operand" "%r")
-			 (match_operand:SI 1 "disp7_operand"     "i")))
-	(match_operand:HI 2 "register_operand" "r"))]
-  ""
-  "std16\t%2, %0, %1"
-  [(set_attr "type" "store")])
 
 (define_insn "*loadhi_mem"
   [(set (match_operand:HI 0         "register_operand" "=r")
@@ -370,23 +338,6 @@
   "movepc\t%0, %1"
   [(set_attr "type" "int")])
 
-;; Load, Store with immediate
-(define_insn "*loadsi_disp"
-  [(set (match_operand:SI 0 "register_operand" "=r")
-	(mem:SI (plus:SI (match_operand:SI 1 "register_operand" "%r")
-			 (match_operand:SI 2 "disp8_operand"     "i"))))]
-  ""
-  "ldd32\t%0, %1, %2"
-  [(set_attr "type" "load")])
-
-(define_insn "*storesi_disp"
-  [(set (mem:SI (plus:SI (match_operand:SI 0 "register_operand" "%r")
-			 (match_operand:SI 1 "disp8_operand"     "i")))
-	(match_operand:SI 2 "register_operand" "r"))]
-  ""
-  "std32\t%2, %0, %1"
-  [(set_attr "type" "store")])
-
 ;; Load, Store
 (define_insn "*loadsi_mem"
   [(set (match_operand:SI         0 "register_operand" "=r")
@@ -420,43 +371,12 @@
 ;; Conversion instructions
 ;; -------------------------------------------------------------------------
 
-;; Unsigned conversions
-
-(define_insn "zero_extendqisi2"
-  [(set (match_operand:SI 0 "register_operand"                    "=r,r,r")
-	(zero_extend:SI (match_operand:QI 1 "nonimmediate_operand" "0,T,m")))]
-  ""
-  "@
-   get8\t%0, 0
-   ld8\t%0, %1
-   ldd8\t%0, %1"
-  [(set_attr "type" "int,load,load")])
-
-(define_insn "zero_extendhisi2"
-  [(set (match_operand:SI 0 "register_operand"                    "=r,r,r")
-	(zero_extend:SI (match_operand:HI 1 "nonimmediate_operand" "0,T,m")))]
-  ""
-  "@
-   wh16\t%0, 0x0000
-   ld16\t%0, %1
-   ldd16\t%0, %1"
-  [(set_attr "type" "int,load,load")])
-
-;; Signed conversions
-
-(define_insn "extendqisi2"
-  [(set (match_operand:SI 0 "register_operand"                "=r")
-	(sign_extend:SI (match_operand:QI 1 "register_operand" "r")))]
-  ""
-  "sext8\t%0, %1"
-  [(set_attr "type" "int")])
-
-(define_insn "extendhisi2"
-  [(set (match_operand:SI 0 "register_operand"                "=r")
-	(sign_extend:SI (match_operand:HI 1 "register_operand" "r")))]
-  ""
-  "sext16\t%0, %1"
-  [(set_attr "type" "int")])
+;; Zero Extension
+; zero_extendqisi2
+; zero_extendhisi2
+;; Sign Extension
+; extendqisi2
+; extendhisi2
 
 ;; -------------------------------------------------------------------------
 ;; Arithmetic instructions
@@ -477,22 +397,6 @@
   }
 }
 ")
-
-(define_insn "*inc"
-  [(set (match_operand:SI 0 "register_operand"         "=r")
-	(plus:SI (match_operand:SI 1 "register_operand" "r")
-		 (const_int 1)))]
-  ""
-  "inc\t%0, %1"
-  [(set_attr "type" "int")])
-
-(define_insn "*dec_"
-  [(set (match_operand:SI 0 "register_operand"         "=r")
-	(plus:SI (match_operand:SI 1 "register_operand" "r")
-		 (const_int -1)))]
-  ""
-  "dec\t%0, %1"
-  [(set_attr "type" "int")])
 
 (define_insn "*addsi3_insn"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
@@ -519,14 +423,6 @@
   }
 }
 ")
-
-(define_insn "*dec"
-  [(set (match_operand:SI 0 "register_operand"          "=r")
-	(minus:SI (match_operand:SI 1 "register_operand" "r")
-		  (const_int 1)))]
-  ""
-  "dec\t%0, %1"
-  [(set_attr "type" "int")])
 
 (define_insn "*subsi3_insn"
   [(set (match_operand:SI 0 "register_operand"          "=r,r")
@@ -628,14 +524,6 @@
   "and\t%0, %2"
   [(set_attr "type" "int")])
 
-(define_insn "*nandsi3"
-  [(set (match_operand:SI 0 "register_operand"                 "=r")
-	(ior:SI (not:SI (match_operand:SI 1 "register_operand" "%0"))
-		(not:SI (match_operand:SI 2 "register_operand"  "r"))))]
-  ""
-  "nand\t%0, %2"
-  [(set_attr "type" "int")])
-
 ;; Inclusive OR, 32-bit integers
 (define_insn "iorsi3"
   [(set (match_operand:SI 0 "register_operand"         "=r")
@@ -645,14 +533,6 @@
   "or\t%0, %2"
   [(set_attr "type" "int")])
 
-(define_insn "*inorsi3"
-  [(set (match_operand:SI 0 "register_operand"                 "=r")
-	(and:SI (not:SI (match_operand:SI 1 "register_operand" "%0"))
-		(not:SI (match_operand:SI 2 "register_operand"  "r"))))]
-  ""
-  "nor\t%0, %2"
-  [(set_attr "type" "int")])
-
 ;; Exclusive OR, 32-bit integers
 (define_insn "xorsi3"
   [(set (match_operand:SI 0 "register_operand"         "=r")
@@ -660,14 +540,6 @@
 		(match_operand:SI 2 "register_operand"  "r")))]
   ""
   "xor\t%0, %2"
-  [(set_attr "type" "int")])
-
-(define_insn "*xnorsi3"
-  [(set (match_operand:SI 0 "register_operand"                 "=r")
-	(not:SI (xor:SI (match_operand:SI 1 "register_operand" "%0")
-			(match_operand:SI 2 "register_operand"  "r"))))]
-  ""
-  "xnor\t%0, %2"
   [(set_attr "type" "int")])
 
 ;; One's complement (Logical Not), 32-bit integers
@@ -695,24 +567,6 @@
 ;; -------------------------------------------------------------------------
 ;; Branch instructions
 ;; -------------------------------------------------------------------------
-
-;(define_expand "cbranchsi4"
-;  [(set (reg:CC CONDITION_CODE_REGNUM)
-;	(compare:CC (match_operand:SI 1 "register_operand"  "")
-;		    (match_operand:SI 2 "nonmemory_operand" "")))
-;   (set (pc)
-;	(if_then_else (match_operator 0 "ordered_comparison_operator"
-;				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
-;		      (label_ref (match_operand 3 "" ""))
-;		      (pc)))]
-;  ""
-;  "
-;{
-;   operands[1] = force_reg (Pmode, operands[1]);
-;   /* FIXME operands[2] can be immediate */
-;   operands[2] = force_reg (Pmode, operands[2]);
-;}
-;")
 
 (define_expand "cbranchsi4"
   [(set (pc)
@@ -757,6 +611,24 @@
    cmp\t%1, %2\n\tbr\t%3, #%B0"
   [(set_attr "length" "8")
    (set_attr "type" "branch,branch")])
+
+;(define_expand "cbranchsi4"
+;  [(set (reg:CC CONDITION_CODE_REGNUM)
+;	(compare:CC (match_operand:SI 1 "register_operand"  "")
+;		    (match_operand:SI 2 "nonmemory_operand" "")))
+;   (set (pc)
+;	(if_then_else (match_operator 0 "ordered_comparison_operator"
+;				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
+;		      (label_ref (match_operand 3 "" ""))
+;		      (pc)))]
+;  ""
+;  "
+;{
+;   operands[1] = force_reg (Pmode, operands[1]);
+;   /* FIXME operands[2] can be immediate */
+;   operands[2] = force_reg (Pmode, operands[2]);
+;}
+;")
 
 ;(define_insn "*branch_true"
 ;  [(set (pc)
