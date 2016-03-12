@@ -679,40 +679,8 @@
   [(set_attr "type" "int")])
 
 ;; -------------------------------------------------------------------------
-;; Compare instructions
+;; Compare and Branch instructions
 ;; -------------------------------------------------------------------------
-
-;(define_insn "*cmpsi"
-;  [(set (reg:CC CONDITION_CODE_REGNUM)
-;	(compare:CC (match_operand:SI 0 "register_operand"  "r,r")
-;		    (match_operand:SI 1 "nonmemory_operand" "r,I")))]
-;  ""
-;  "@
-;   cmp\t%0, %1
-;   cmp\t%0, %1"
-;)
-
-;; -------------------------------------------------------------------------
-;; Branch instructions
-;; -------------------------------------------------------------------------
-
-;(define_expand "cbranchsi4"
-;  [(set (reg:CC CONDITION_CODE_REGNUM)
-;	(compare:CC (match_operand:SI 1 "register_operand"  "")
-;		    (match_operand:SI 2 "nonmemory_operand" "")))
-;   (set (pc)
-;	(if_then_else (match_operator 0 "ordered_comparison_operator"
-;				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
-;		      (label_ref (match_operand 3 "" ""))
-;		      (pc)))]
-;  ""
-;  "
-;{
-;   operands[1] = force_reg (Pmode, operands[1]);
-;   /* FIXME operands[2] can be immediate */
-;   operands[2] = force_reg (Pmode, operands[2]);
-;}
-;")
 
 (define_expand "cbranchsi4"
   [(set (pc)
@@ -757,26 +725,6 @@
    cmp\t%1, %2\n\tbr\t%3, #%B0"
   [(set_attr "length" "8")
    (set_attr "type" "branch,branch")])
-
-;(define_insn "*branch_true"
-;  [(set (pc)
-;	(if_then_else (match_operator 0 "comparison_operator"
-;				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
-;		      (label_ref (match_operand 1 "" ""))
-;		      (pc)))]
-;  ""
-;  "br\t%1, #%b0"
-;)
-
-;(define_insn "*branch_false"
-;  [(set (pc)
-;	(if_then_else (match_operator 0 "comparison_operator"
-;				      [(reg:CC CONDITION_CODE_REGNUM) (const_int 0)])
-;		      (pc)
-;		      (label_ref (match_operand 1 "" ""))))]
-;  ""
-;  "br\t%1, #%B0"
-;)
 
 ;; -------------------------------------------------------------------------
 ;; Call and Jump instructions
